@@ -1,2 +1,3 @@
 rootProject.name = 'sparkstreaming'
 
+include 'spark-kafka'
