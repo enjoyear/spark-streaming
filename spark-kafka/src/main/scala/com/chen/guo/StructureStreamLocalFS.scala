@@ -1,6 +1,6 @@
 package com.chen.guo
 
-import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
@@ -15,11 +15,28 @@ object StructureStreamLocalFS extends App {
     .master("local[2]")
     .getOrCreate()
 
-  val schema = new StructType()
-    .add("id", StringType)
-    .add("name", StringType)
+  // https://kontext.tech/column/spark/457/tutorial-turn-off-info-logs-in-spark
+  // info log is too much
+  spark.sparkContext.setLogLevel("WARN")
 
-  val rawRecords: DataFrame = spark.readStream
+  val schema = new StructType()
+    .add("name", StringType)
+    .add("age", IntegerType)
+
+  /**
+    * This generates streaming DataFrames that are untyped, meaning that the schema of the DataFrame is not checked at
+    * compile time, only checked at runtime when the query is submitted. Some operations like map, flatMap, etc. need
+    * the type to be known at compile time. To do those, you can convert these untyped streaming DataFrames to typed
+    * streaming Datasets using the same methods as static DataFrame.
+    */
+  val csvDF: DataFrame = spark
+    .readStream
+
+    /**
+      * More options can be found here:
+      * https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#input-sources
+      */
+    .option("sep", ";")
     .schema(schema)
 
     /**
@@ -29,9 +46,14 @@ object StructureStreamLocalFS extends App {
       * Note that the files must be atomically placed in the given directory, which in most file systems, can be
       * achieved by file move operations.
       */
-    .json("file:///Users/chguo/repos/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleJson/*")
+    // Equivalent to format("csv").load("/path/to/directory")
+    .csv("file:///Users/chguo/repos/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleCSV/*")
 
 
-  rawRecords.foreach(println(_))
+  val query = csvDF.writeStream
+    .outputMode("append")
+    .format("console")
+    .start()
 
+  query.awaitTermination()
 }
