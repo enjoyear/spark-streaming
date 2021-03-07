@@ -19,7 +19,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
   * Run a Netcat as a data server by using
   * nc -lk 9999
   */
-object SStreamLocalSocket extends App {
+object SStreamSocket extends App {
 
   val spark = SparkSession
     .builder

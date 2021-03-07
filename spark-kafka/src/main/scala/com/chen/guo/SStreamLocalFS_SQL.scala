@@ -5,6 +5,9 @@ import org.apache.spark.sql.types.{IntegerType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
+  * Ref:
+  * https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#basic-operations---selection-projection-aggregation
+  *
   * An example that registers a streaming DataFrame/Dataset as a temporary view and then apply SQL commands on it.
   * How to run:
   * Add more files like a.txt into resources/SampleCSV/...
