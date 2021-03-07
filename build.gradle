@@ -20,6 +20,7 @@ allprojects {
     compile "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
     compile "org.apache.spark:spark-sql_${versions.scalaMajor}:${versions.spark}"
     compile "org.apache.spark:spark-streaming_${versions.scalaMajor}:${versions.spark}"
+    compile "org.apache.spark:spark-streaming-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
 
     compile "org.scala-lang:scala-library:${versions.scala}"
     compile "org.scala-lang:scala-reflect:${versions.scala}"

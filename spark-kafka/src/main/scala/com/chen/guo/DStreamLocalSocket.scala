@@ -1,14 +1,18 @@
 package com.chen.guo
 
 import org.apache.spark.SparkConf
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 /**
+  * Ref:
+  * https://spark.apache.org/docs/latest/streaming-programming-guide.html
+  *
   * Run a Netcat as a data server by using
   *   nc -lk 9999
   */
-object Fun extends App {
+object DStreamLocalSocket extends App {
   // Create a local StreamingContext with two working thread and batch interval of 1 second.
   // The master requires 2 cores to prevent a starvation scenario.
   val conf = new SparkConf()
@@ -30,6 +34,10 @@ object Fun extends App {
   // Print the first ten elements of each RDD generated in this DStream to the console
   wordCounts.print()
 
+
   ssc.start() // Start the computation
+  //Once a context has been started, no new streaming computations can be set up or added to it.
+
   ssc.awaitTermination() // Wait for the computation to terminate
+  //Once a context has been stopped, it cannot be restarted.
 }
