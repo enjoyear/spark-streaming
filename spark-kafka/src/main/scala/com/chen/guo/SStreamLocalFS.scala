@@ -1,13 +1,24 @@
 package com.chen.guo
 
+import com.chen.guo.constant.Constant
 import org.apache.spark.sql.types.{IntegerType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
-  * Run a Netcat as a data server by using
-  * nc -lk 9999
+  * Schema inference:
+  * For ad-hoc use cases, you can reenable schema inference by setting spark.sql.streaming.schemaInference to true.
+  *
+  * Partition discovery:
+  * Supported when subdirectories that are named /key=value/ are present and listing will automatically recurse into
+  * these directories. If these columns appear in the user-provided schema, they will be filled in by Spark based on the
+  * path of the file being read. The directories that make up the partitioning scheme must be present when the query
+  * starts and must remain static. For example, it is okay to add /data/year=2016/ when /data/year=2015/ was present,
+  * but it is invalid to change the partitioning column (i.e. by creating the directory /data/date=2016-04-17/)
+  *
+  * How to run:
+  * Add more files like a.txt into resources/SampleCSV/...
   */
-object StructureStreamLocalFS extends App {
+object SStreamLocalFS extends App {
 
   val spark = SparkSession
     .builder()
@@ -47,7 +58,7 @@ object StructureStreamLocalFS extends App {
       * achieved by file move operations.
       */
     // Equivalent to format("csv").load("/path/to/directory")
-    .csv("file:///Users/chguo/repos/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleCSV/*")
+    .csv(Constant.CSVSampleFiles)
 
 
   val query = csvDF.writeStream

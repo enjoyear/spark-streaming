@@ -15,10 +15,11 @@ import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
   * which can achieve end-to-end latencies as low as 1 millisecond with at-least-once guarantees
   * 4. can handle event-time and late data
   *
+  * How to run:
   * Run a Netcat as a data server by using
   * nc -lk 9999
   */
-object StructuredStreamLocalSocket extends App {
+object SStreamLocalSocket extends App {
 
   val spark = SparkSession
     .builder
@@ -66,7 +67,7 @@ object StructuredStreamLocalSocket extends App {
       *
       */
     //.outputMode("complete")
-    //.outputMode("append")   //not applicable to aggregation
+    //.outputMode("append") // Append output mode not supported when there are streaming aggregations on streaming DataFrames/DataSets without watermark;
     .outputMode("update")
     .format("console")
     .start()
