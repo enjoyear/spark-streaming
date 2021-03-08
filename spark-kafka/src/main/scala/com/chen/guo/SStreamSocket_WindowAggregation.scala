@@ -2,9 +2,8 @@ package com.chen.guo
 
 import java.sql.Timestamp
 
-import org.apache.spark.sql.functions.window
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.OutputMode
-import org.apache.spark.sql.types.{StringType, StructType, TimestampType}
 import org.apache.spark.sql.{Column, DataFrame, Dataset, SparkSession}
 
 /**
@@ -121,7 +120,7 @@ object Locals {
   // so the generated code will be very long. There will be an issue like below
   // https://stackoverflow.com/questions/50891509/apache-spark-codegen-stage-grows-beyond-64-kb
   private val slidingSize = "20 seconds"
-  val slidingWindow: Column = window(new Column("eventTime"), windowSize, slidingSize)
+  val slidingWindow: Column = window(col("eventTime"), windowSize, slidingSize)
 }
 
 /**
