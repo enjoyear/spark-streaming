@@ -85,6 +85,9 @@ object SStreamSocket_Window extends App {
       * if the mode is set to APPEND: only closed windows are output
       *
       */
+
+    // In the current implementation in the micro-batch engine, watermarks are advanced at the end of a micro-batch,
+    // and the next micro-batch uses the updated watermark to clean up state and output outer results.
     .withWatermark("eventTime", "5 minutes")
     .groupBy(Locals.slidingWindow, $"word")
     .count()
