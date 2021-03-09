@@ -63,13 +63,16 @@ object SStreamSocket_StreamStaticJoin extends App {
     .start()
 
   query.awaitTermination()
-}
 
-case class Person(name: String, age: Int)
+  case class Person(name: String, age: Int)
 
-object Person {
-  def apply(row: String): Person = {
-    val parts = row.split(",")
-    Person(parts(0).trim(), Integer.valueOf(parts(1).trim()))
+  object Person {
+    def apply(row: String): Person = {
+      val parts = row.split(",")
+      Person(parts(0).trim(), Integer.valueOf(parts(1).trim()))
+    }
   }
 }
+
+
+
