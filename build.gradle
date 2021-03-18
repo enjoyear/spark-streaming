@@ -6,7 +6,10 @@ allprojects {
   apply plugin: 'scala'
   apply plugin: 'idea'
 
-  sourceCompatibility = 1.8
+  //install Java 11(jdk-11.0.10_osx-x64_bin.dmg) at https://www.oracle.com/java/technologies/javase-jdk11-downloads.html#license-lightbox
+  //set JAVA_HOME in .bashrc:    export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.10.jdk/Contents/Home
+  //follow https://mkyong.com/intellij/how-to-change-the-intellij-idea-jdk-version/ to add JDK 11 to IntelliJ
+  sourceCompatibility = 1.11
 
   repositories {
     mavenCentral()
