@@ -1,5 +1,5 @@
 package com.chen.guo.constant
 
 object Constant {
-  val CSVSampleFiles = "file:///Users/chguo/repos/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleCSV/*"
+  val CSVSampleFiles = s"file://${System.getProperty("user.home")}/repo/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleCSV/*"
 }
