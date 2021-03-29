@@ -1,6 +1,8 @@
 package com.chen.guo.kafka
 
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
+import com.chen.guo.SStreamSocket_DropDuplicates.spark
+import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, StreamingQueryListener, Trigger}
 import org.apache.spark.sql.{Dataset, SparkSession}
 
 /**
@@ -19,7 +21,7 @@ import org.apache.spark.sql.{Dataset, SparkSession}
   * How to run:
   * Setup local Kafka cluster as in https://kafka.apache.org/quickstart
   */
-object KafkaSourceStreaming extends App {
+object KafkaSourceConsoleSink extends App {
 
   val spark = SparkSession
     .builder
@@ -42,7 +44,8 @@ object KafkaSourceStreaming extends App {
     .option("subscribe", topicName)
     //start consuming from the earliest. By default it will be the latest, which is to discard all history
     //.option("startingOffsets", "earliest")
-    .option("startingOffsets", s"""{"$topicName":{"0":1}}""")
+    //change to {"$topicName":{"0":1}} if you want to read from offset 1
+    .option("startingOffsets", s"""{"$topicName":{"0":-2}}""")
     //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
     .load()
 
@@ -50,9 +53,11 @@ object KafkaSourceStreaming extends App {
     .as[(String, String)]
 
   val query: StreamingQuery = kafkaDF.writeStream
+    .queryName("kafka-ingest")
     .outputMode(OutputMode.Append())
     .option("numRows", 100) //show more than 20 rows by default
     .option("truncate", value = false) //To show the full column content
+    .trigger(Trigger.ProcessingTime("3 seconds"))
     .format("console")
     .start()
 
