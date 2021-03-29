@@ -12,23 +12,23 @@ import org.apache.spark.sql.{Dataset, SparkSession}
   *
   * ├── checkpoint
   * │   ├── commits
-  * │   │   ├── 0
+  * │   │   ├── 0     //3 for each batch: step 4. add a file indicating committed
   * │   │   ├── 1
   * │   │   └── 2
-  * │   ├── metadata  //keeps the id for the writeStream, but not run id
-  * │   ├── offsets   //WAL of Offsets
-  * │   │   ├── 0
+  * │   ├── metadata        //1. mark down the writeStream id(e.g. {"id":"6620ab39-04f9-4af4-8e50-9e5dedff1205"}) as the first thing to do
+  * │   ├── offsets
+  * │   │   ├── 0     //3 for each batch: step 1. mark down the max offset for a topic partition and the configurations for current batch job
   * │   │   ├── 1
   * │   │   └── 2
   * │   └── sources
   * │       └── 0
-  * │           └── 0
+  * │           └── 0       //2. before any batch starts, mark down the beginning offset for topic partitions. e.g. {"quickstart-events":{"0":11}}
   * ├── ingested
   * │   ├── _spark_metadata
-  * │   │   ├── 0
+  * │   │   ├── 0     //3 for each batch: step 3. keep the output metadata(e.g. filename, size, etc.) in a file
   * │   │   ├── 1
   * │   │   └── 2
-  * │   ├── part-00000-304e6ea5-368a-485b-ad99-12594bb58de8-c000.json
+  * │   ├── part-00000-304e6ea5-368a-485b-ad99-12594bb58de8-c000.json    //3 for each batch: step 2. save the batch output to disk
   * │   ├── part-00000-84d67966-b3d7-4e95-8a32-514008a43fc3-c000.json
   * │   └── part-00000-adc7631d-98fc-493e-be05-4ea1aa1d5f57-c000.json
   */
