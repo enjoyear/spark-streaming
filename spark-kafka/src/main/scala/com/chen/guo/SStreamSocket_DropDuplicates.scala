@@ -42,6 +42,20 @@ object SStreamSocket_DropDuplicates extends App {
   // Split the lines into words
   val people: Dataset[Person] = lines.as[String].map(Person(_)).dropDuplicates("name")
 
+  spark.streams.addListener(new StreamingQueryListener() {
+    override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
+      println("Query started: " + queryStarted.id)
+    }
+
+    override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
+      println("Query terminated: " + queryTerminated.id)
+    }
+
+    override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
+      println("Query made progress: " + queryProgress.progress)
+    }
+  })
+
   // Start running the query that prints the running counts to the console
   val query: StreamingQuery = people.writeStream
     .queryName("MyDedupQuery")
@@ -62,20 +76,6 @@ object SStreamSocket_DropDuplicates extends App {
   //      println(query.status)
   //    }
   //  }, 5, TimeUnit.SECONDS)
-
-  spark.streams.addListener(new StreamingQueryListener() {
-    override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
-      println("Query started: " + queryStarted.id)
-    }
-
-    override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
-      println("Query terminated: " + queryTerminated.id)
-    }
-
-    override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
-      println("Query made progress: " + queryProgress.progress)
-    }
-  })
 
   query.awaitTermination()
 

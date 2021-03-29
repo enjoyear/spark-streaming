@@ -3,7 +3,7 @@ package com.chen.guo.kafka
 import com.chen.guo.constant.Constant
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, StreamingQueryListener, Trigger}
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
   * Read {@link KafkaSourceConsoleSink}'s doc for more setup details
@@ -49,7 +49,7 @@ object KafkaSourceFileSink extends App {
 
   val topicName = "quickstart-events"
 
-  val df = spark
+  val df: DataFrame = spark
     .readStream
     .format("kafka")
     .option("kafka.bootstrap.servers", "localhost:9092")
@@ -59,55 +59,76 @@ object KafkaSourceFileSink extends App {
     .option("startingOffsets", s"""{"$topicName":{"0":-2}}""")
     //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
     .load()
-    //https://stackoverflow.com/questions/46130191/why-do-id-and-runid-change-every-start-of-a-streaming-query
+
+    /**
+      * The default loaded data frame. Below is a row as an example.
+      * {
+      * "value":"dGhpcyBpcyBtNg==",                    //base64 encoded bytes
+      * "topic":"quickstart-events",
+      * "partition":0,
+      * "offset":5,
+      * "timestamp":"2021-03-28T18:22:18.819-07:00",   //message produced time
+      * "timestampType":0
+      * }
+      */
+    // add extra columns
+    // https://stackoverflow.com/questions/46130191/why-do-id-and-runid-change-every-start-of-a-streaming-query
     .withColumn("tokens", split('value, " "))
     .withColumn("col1", 'tokens(0) cast "string")
     .withColumn("col2", 'tokens(1) cast "string")
 
-  val kafkaDF: Dataset[(String, String)] = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
-    .as[(String, String)]
+
+  //  val kafkaDF: Dataset[(String, String)] = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+  //    .as[(String, String)]
+  val kafkaDF = df.select("value", "offset", "tokens", "col1", "col2")
+
+  spark.streams.active.foreach(x => println(s"Before anything starts -- StreamQuery Id: ${x.id}"))
+
+  // Must be placed before the DataStreamWriter.start(), otherwise onQueryStarted won't be called
+  spark.streams.addListener(new MyStreamingQueryListener())
 
   val query: StreamingQuery = kafkaDF.writeStream
     .queryName("kafka-ingest")
-
     .format("json")
     .option("path", Constant.OutputPath)
     .option("checkpointLocation", Constant.CheckpointLocation)
     .outputMode(OutputMode.Append())
     .trigger(Trigger.ProcessingTime("3 seconds"))
     .start()
-  query.id
-  spark.streams.addListener(new StreamingQueryListener() {
-    override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
-      /**
-        * A unique query id that persists across restarts. {@link StreamingQuery.id}
-        */
-      println("Query started: " + queryStarted.id)
 
-      /**
-        * A query id that is unique for every start/restart. {@link StreamingQuery.runId}
-        */
-      println("Query started: " + queryStarted.runId)
-
-      /**
-        * User specified name of the query. {@link StreamingQuery.name}
-        * This name, if set, must be unique across all active queries.
-        */
-      println("Query started: " + queryStarted.name)
-    }
-
-    override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
-      println("Query terminated: " + queryTerminated.id)
-    }
-
-    override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
-      //println("Query made progress: " + queryProgress.progress)
-      println("Query made progress")
-    }
-  })
+  spark.streams.active.foreach(x => println(s"After something started -- StreamQuery Id: ${x.id}"))
 
   println(s"Awaiting query ${query.name} ${query.id} with run ${query.runId} to terminate")
   // Start multiple streaming queries in a single spark application
   // https://stackoverflow.com/questions/52762405/how-to-start-multiple-streaming-queries-in-a-single-spark-application?rq=1
   spark.streams.awaitAnyTermination()
+}
+
+class MyStreamingQueryListener extends StreamingQueryListener {
+  override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
+    /**
+      * A unique query id that persists across restarts. {@link StreamingQuery.id}
+      */
+    println("Query started: " + queryStarted.id)
+
+    /**
+      * A query id that is unique for every start/restart. {@link StreamingQuery.runId}
+      */
+    println("Query started: " + queryStarted.runId)
+
+    /**
+      * User specified name of the query. {@link StreamingQuery.name}
+      * This name, if set, must be unique across all active queries.
+      */
+    println("Query started: " + queryStarted.name)
+  }
+
+  override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
+    println("Query terminated: " + queryTerminated.id)
+  }
+
+  override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
+    //println("Query made progress: " + queryProgress.progress)
+    println("Query made progress")
+  }
 }
