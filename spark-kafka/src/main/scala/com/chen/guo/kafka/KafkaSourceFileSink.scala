@@ -1,9 +1,10 @@
 package com.chen.guo.kafka
 
 import com.chen.guo.constant.Constant
-import org.apache.spark.sql.functions.split
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.streaming._
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
@@ -45,6 +46,12 @@ import scala.concurrent.duration.DurationInt
   *
   * emp100:{"emp_id":100,"first_name":"Keshav","last_name":"Lodhi"}
   * emp101:{"emp_id":101,"first_name":"Mike","last_name":"M"}
+  * emp105:{"emp_id":105,"first_name":"Tree","last_name":"T"}
+  *
+  * Bad messages
+  * emp102:{"emp_id":"102c","first_name":"BadIdType","last_name":"B"}
+  * emp103:{"emp_id":103,"first_name":"ExtraField","last_name":"E", "age":33}
+  * emp104:{"first_name":"MissingField","last_name":"M"}
   *
   * bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic example-topic
   */
@@ -53,7 +60,7 @@ object KafkaSourceFileSink {
   val appName = "KafkaIntegration"
   val queryNameKafkaIngest = "kafka-ingest"
   val queryNameRate3 = "rate-3s"
-  val topicName = "quickstart-events"
+  val topicName = "example-topic"
   private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor
 
   def main(args: Array[String]): Unit = {
@@ -84,7 +91,6 @@ object KafkaSourceFileSink {
         .start()
     }
 
-    import spark.implicits._
     val df: DataFrame = spark
       .readStream
       .format("kafka")
@@ -99,26 +105,39 @@ object KafkaSourceFileSink {
       /**
         * The original data frame loaded. See the row below as an example.
         * {
-        * "value":"dGhpcyBpcyBtNg==",                    //base64 encoded bytes
-        * "topic":"quickstart-events",
+        * "key":"ZW1wMTAw",                                                                       //base64 encoded bytes
+        * "value":"eyJlbXBfaWQiOjEwMCwiZmlyc3RfbmFtZSI6Iktlc2hhdiIsImxhc3RfbmFtZSI6IkxvZGhpIn0=", //base64 encoded bytes
+        * "topic":"example-topic",
         * "partition":0,
         * "offset":5,
         * "timestamp":"2021-03-28T18:22:18.819-07:00",   //message produced time
         * "timestampType":0
         * }
         */
-      // add extra columns
+      // Another example for adding extra columns
       // https://stackoverflow.com/questions/46130191/why-do-id-and-runid-change-every-start-of-a-streaming-query
-      .withColumn("tokens", split('value, " "))
-      .withColumn("col1", 'tokens(0) cast "string")
-      .withColumn("col2", 'tokens(1) cast "string")
+      .selectExpr("CAST(key AS STRING) as key", "CAST(value AS STRING) as json")
 
-    //  val kafkaDF: Dataset[(String, String)] = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
-    //    .as[(String, String)]
-    val kafkaDF = df.select("value", "offset", "tokens", "col1", "col2")
+    /**
+      * If the schema, from_json(df("json"), TestTopicSchema.employeeSchema), is not provided, the JSON will be ingested
+      * as it is
+      *
+      * If the schema, from_json(df("json"), TestTopicSchema.employeeSchema), is provided,
+      * then the following columns will not be included
+      * 1. Columns where the types don't match the schema
+      * 2. Extra columns that are not defined in the schema
+      * 3. Missing columns defined in the schema but not in the payload
+      *
+      * Ref:
+      * https://databricks.com/blog/2017/02/23/working-complex-data-formats-structured-streaming-apache-spark-2-1.html
+      */
+    val kafkaDF = df.select(df("key"), from_json(df("json"), TestTopicSchema.employeeSchema).as("data"))
+      //.select("key", "data.*")  //flatten the nested columns within data
 
     val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
       .queryName(queryNameKafkaIngest)
+      //TODO try partition
+      //.partitionBy("")
       .format("json")
       .option("path", getLocalPath(Constant.OutputPath, queryNameKafkaIngest))
       .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, queryNameKafkaIngest))
@@ -134,6 +153,11 @@ object KafkaSourceFileSink {
     //stopQueriesOption1(spark)
     //stopQueriesOption2(spark)
     addShutdownHook(spark)
+
+    // Sleep 2 seconds for waiting for an execution
+    // https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/streaming/StreamExecution.scala#L532
+    Thread.sleep(2000)
+    qKafkaIngest.explain(true)
 
     waitAllTerminationOption1(spark)
     //checkTerminationOption2(spark)
@@ -254,4 +278,12 @@ class MyStreamingQueryListener(sqm: StreamingQueryManager) extends StreamingQuer
     //println("Query made progress: " + queryProgress.progress)
     println(s"Query ${queryProgress.progress.name} made progress")
   }
+}
+
+object TestTopicSchema {
+  val employeeSchema: StructType = StructType(Array(
+    StructField("emp_id", IntegerType),
+    StructField("first_name", StringType),
+    StructField("last_name", StringType)
+  ))
 }
