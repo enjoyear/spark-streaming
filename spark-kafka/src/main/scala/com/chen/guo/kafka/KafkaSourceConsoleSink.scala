@@ -1,8 +1,6 @@
 package com.chen.guo.kafka
 
-import com.chen.guo.SStreamSocket_DropDuplicates.spark
-import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, StreamingQueryListener, Trigger}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.apache.spark.sql.{Dataset, SparkSession}
 
 /**

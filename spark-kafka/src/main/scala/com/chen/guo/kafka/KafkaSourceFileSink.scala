@@ -35,6 +35,18 @@ import scala.concurrent.duration.DurationInt
   * │   ├── part-00000-304e6ea5-368a-485b-ad99-12594bb58de8-c000.json    //3 for each batch: step 2. save the batch output to disk
   * │   ├── part-00000-84d67966-b3d7-4e95-8a32-514008a43fc3-c000.json
   * │   └── part-00000-adc7631d-98fc-493e-be05-4ea1aa1d5f57-c000.json
+  *
+  *
+  * Create topics with keys. Follow examples here
+  * https://stackoverflow.com/questions/62070151/how-to-send-key-value-messages-with-the-kafka-console-producer
+  *
+  * bin/kafka-console-producer.sh --broker-list localhost:9092 --topic example-topic \
+  * --property "parse.key=true" --property "key.separator=:"
+  *
+  * emp100:{"emp_id":100,"first_name":"Keshav","last_name":"Lodhi"}
+  * emp101:{"emp_id":101,"first_name":"Mike","last_name":"M"}
+  *
+  * bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic example-topic
   */
 object KafkaSourceFileSink {
 
@@ -49,8 +61,6 @@ object KafkaSourceFileSink {
       .builder
       .master("local[2]")
       .appName(appName)
-      //.config("spark.streaming.stopGracefullyOnShutdown", "true")
-      .config("spark.sql.streaming.stopTimeout", "5000") //in milliseconds
       .getOrCreate()
 
     // https://kontext.tech/column/spark/457/tutorial-turn-off-info-logs-in-spark
@@ -58,6 +68,21 @@ object KafkaSourceFileSink {
     spark.sparkContext.setLogLevel("WARN")
     // Must be placed before the DataStreamWriter.start(), otherwise onQueryStarted won't be called
     spark.streams.addListener(new MyStreamingQueryListener(spark.streams))
+
+    if (false) {
+      //Flip to add one more streaming query to this example
+      val qRate3s: StreamingQuery = spark.readStream
+        .format("rate")
+        .load
+        .writeStream
+        .queryName(queryNameRate3)
+        .format("json")
+        .option("path", getLocalPath(Constant.OutputPath, queryNameRate3))
+        .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, queryNameRate3))
+        .outputMode(OutputMode.Append())
+        .trigger(Trigger.ProcessingTime(3.seconds))
+        .start()
+    }
 
     import spark.implicits._
     val df: DataFrame = spark
@@ -88,17 +113,6 @@ object KafkaSourceFileSink {
       .withColumn("col1", 'tokens(0) cast "string")
       .withColumn("col2", 'tokens(1) cast "string")
 
-
-    val qRate3s: StreamingQuery = spark.readStream
-      .format("rate")
-      .load
-      .writeStream
-      .queryName(queryNameRate3)
-      .format("console")
-      .trigger(Trigger.ProcessingTime(3.seconds))
-      .option("truncate", false)
-      .start
-
     //  val kafkaDF: Dataset[(String, String)] = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
     //    .as[(String, String)]
     val kafkaDF = df.select("value", "offset", "tokens", "col1", "col2")
@@ -106,8 +120,8 @@ object KafkaSourceFileSink {
     val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
       .queryName(queryNameKafkaIngest)
       .format("json")
-      .option("path", Constant.OutputPath)
-      .option("checkpointLocation", Constant.CheckpointLocation)
+      .option("path", getLocalPath(Constant.OutputPath, queryNameKafkaIngest))
+      .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, queryNameKafkaIngest))
       .outputMode(OutputMode.Append())
       .trigger(Trigger.ProcessingTime("3 seconds"))
 
@@ -127,6 +141,8 @@ object KafkaSourceFileSink {
     executor.shutdown()
     println(s"Exiting structured streaming application ${appName} now...")
   }
+
+  def getLocalPath(rootDir: String, queryName: String) = s"${rootDir}/${queryName}"
 
   /**
     * Stop queries based on a fixed schedule
