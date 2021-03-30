@@ -14,6 +14,7 @@ import scala.concurrent.duration.DurationInt
 /**
   *
   * Read {@link KafkaSourceConsoleSink}'s doc for more setup details
+  *
   * Step 1: Create the testing topic
   * bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic example-topic
   * bin/kafka-topics.sh --create --topic example-topic --bootstrap-server localhost:9092 \
@@ -38,40 +39,22 @@ import scala.concurrent.duration.DurationInt
   * emp103:{"emp_id":103,"first_name":"ExtraField","last_name":"E", "age":33}
   * emp104:{"first_name":"MissingField","last_name":"M"}
   *
+  * Other commands:
+  * List kafka consumer groups(Ref: https://www.baeldung.com/ops/listing-kafka-consumers)
+  * -- ./bin/kafka-consumer-groups.sh --list --bootstrap-server localhost:9092
+  * -- ./bin/kafka-consumer-groups.sh --describe --group spark-kafka-source-73eb1215-9398-4d61-a437-ce20306f80ff-1221582759-driver-0 --members --bootstrap-server localhost:9092
+  * -- ./bin/kafka-consumer-groups.sh --describe --group spark-kafka-source-73eb1215-9398-4d61-a437-ce20306f80ff-1221582759-driver-0 --bootstrap-server localhost:9092
+  *
   * Other reads:
   * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-MicroBatchExecution.html
   * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-offsets-and-metadata-checkpointing.html
-  *
-  * Folder structure:
-  * ├── checkpoint
-  * │   ├── commits
-  * │   │   ├── 0     //3 for each batch: step 4. add a file indicating committed
-  * │   │   ├── 1
-  * │   │   └── 2
-  * │   ├── metadata        //1. mark down the writeStream id(e.g. {"id":"6620ab39-04f9-4af4-8e50-9e5dedff1205"}) as the first thing to do
-  * │   ├── offsets
-  * │   │   ├── 0     //3 for each batch: step 1. mark down the max offset for a topic partition and the configurations for current batch job
-  * │   │   ├── 1
-  * │   │   └── 2
-  * │   └── sources
-  * │       └── 0
-  * │           └── 0       //2. before any batch starts, mark down the beginning offset for topic partitions. e.g. {"quickstart-events":{"0":11}}
-  * ├── ingested
-  * │   ├── _spark_metadata
-  * │   │   ├── 0     //3 for each batch: step 3. keep the output metadata(e.g. filename, size, etc.) in a file
-  * │   │   ├── 1
-  * │   │   └── 2
-  * │   ├── part-00000-304e6ea5-368a-485b-ad99-12594bb58de8-c000.json    //3 for each batch: step 2. save the batch output to disk
-  * │   ├── part-00000-84d67966-b3d7-4e95-8a32-514008a43fc3-c000.json
-  * │   └── part-00000-adc7631d-98fc-493e-be05-4ea1aa1d5f57-c000.json
-  *
   */
 object KafkaSourceFileSink {
 
   val appName = "KafkaIntegration"
   val queryNameKafkaIngest = "kafka-ingest"
   val queryNameRate3 = "rate-3s"
-  val topicName = "example-topic"
+  val topicName = "example-topic,quickstart-events"
   private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor
 
   def main(args: Array[String]): Unit = {
@@ -106,10 +89,23 @@ object KafkaSourceFileSink {
       .readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", "localhost:9092")
+
+      /**
+        * "kafka.group.id" can also be set instead
+        * Be careful about Kafka group-based authorization
+        */
+      .option("groupIdPrefix", "spark-kafka-ingest")
       .option("subscribe", topicName)
       //start consuming from the earliest. By default it will be the latest, which is to discard all history
       //.option("startingOffsets", "earliest")
-      .option("startingOffsets", s"""{"$topicName":{"0":-2,"1":-2,"2":-2}}""")
+      /**
+        * If startingOffsets below are not configured, Spark will read from latest offset by default
+        * If they are configured, validateTopicPartitions(https://github.com/apache/spark/blob/master/external/kafka-0-10-sql/src/main/scala/org/apache/spark/sql/kafka010/KafkaOffsetReaderConsumer.scala)
+        * make sure that they must contain all TopicPartitions
+        *
+        * Newly discovered partitions during a query will start at earliest.
+        */
+      .option("startingOffsets", s"""{"example-topic":{"0":-2,"1":-2,"2":-2},"quickstart-events":{"0":-2}}""")
       //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
       .load()
 

@@ -1,0 +1,5 @@
+v1
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kafka-ingest/part-00000-a0a04bbc-a808-4d6a-a821-4b882bbf832e-c000.json","size":77,"isDir":false,"modificationTime":1617127015395,"blockReplication":1,"blockSize":33554432,"action":"add"}
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kafka-ingest/part-00001-552986ce-81d1-4826-b7ef-6c9a1d773010-c000.json","size":132,"isDir":false,"modificationTime":1617127015397,"blockReplication":1,"blockSize":33554432,"action":"add"}
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kafka-ingest/part-00002-f66bc336-d061-49a4-87d7-d0eddab2b4c2-c000.json","size":150,"isDir":false,"modificationTime":1617127016235,"blockReplication":1,"blockSize":33554432,"action":"add"}
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kafka-ingest/part-00003-91f434a3-6111-4951-baad-9f5312a0085d-c000.json","size":67,"isDir":false,"modificationTime":1617127016237,"blockReplication":1,"blockSize":33554432,"action":"add"}
