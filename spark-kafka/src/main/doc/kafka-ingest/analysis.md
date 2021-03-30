@@ -16,7 +16,7 @@
 │   │   └── 2
 │   └── sources
 │       └── 0
-│           └── 0       //2. before any batch starts, mark down the beginning offset for topic partitions. e.g. {"example-topic":{"2":1,"1":2,"0":1}}
+│           └── 0       //2. before any batch starts, mark down the beginning offset for topic partitions. e.g. {"quickstart-events":{"0":0},"example-topic":{"2":0,"1":0,"0":0}}
 ├── ingested
 │   ├── _spark_metadata
 │   │   ├── 0     //3 for each batch: step 3. keep the output metadata(e.g. filename, size, etc.) in a file with name starting from 0
@@ -38,12 +38,16 @@ v1
 ```
 
 ### Ingested Json file
+A json file is created for each TopicPartition
 For `./ingested/kafka-ingest/part-00001-cd15d0d5-824c-48d8-8fc9-40f927d86ba2-c000.json` file, the content could be
 ```text
 {"key":"emp101","data":{"emp_id":101,"first_name":"Mike","last_name":"M"}}
 {"key":"emp105","data":{"emp_id":105,"first_name":"Tree","last_name":"T"}}
 ```
-Two rows are ingested in current batch for the TopicPartition-00001
+Two rows are ingested in current batch for the Topic example-topic Partition 1.
+
+Be careful that this "part-00001-" does NOT statically map to a TopicPartition. The number 00001 indicates how many output files are generated. It's 0-based. If there is only one TopicPartition ingested for current batch job, a part-00000- file will be created. If there are two TopicPartitions ingested for current batch job, part-00000- and part-00001- will be created, and they will be referenced in the _spark_metadata file.
+
 
 
 

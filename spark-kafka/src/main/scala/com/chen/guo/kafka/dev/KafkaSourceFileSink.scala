@@ -92,7 +92,7 @@ object KafkaSourceFileSink {
         .start()
     }
 
-    if (true) {
+    if (false) {
       //Add multiple streaming queries
       spark
         .readStream
@@ -130,7 +130,23 @@ object KafkaSourceFileSink {
         * If they are configured, validateTopicPartitions(https://github.com/apache/spark/blob/master/external/kafka-0-10-sql/src/main/scala/org/apache/spark/sql/kafka010/KafkaOffsetReaderConsumer.scala)
         * make sure that they must contain all TopicPartitions
         *
-        * Newly discovered partitions during a query will start at earliest.
+        * Note that Spark automatically detects newly added partitions. Newly discovered partitions during a query will
+        * start at earliest.
+        * Experiment
+        * 1. Begin with
+        * $ bin/kafka-consumer-groups.sh --describe --group spark-kafka-ingest-374de33a-442e-49d6-b6c4-283338743416--68643605-driver-0 --bootstrap-server localhost:9092
+        * -- Only 3 partitions are subscribed
+        *
+        * 2. Increase the topic partitions from 3 to 4
+        * bin/kafka-topics.sh --zookeeper localhost:2181 --alter --topic example-topic --partitions 4
+        *
+        * 3. Check again
+        * $ bin/kafka-consumer-groups.sh --describe --group spark-kafka-ingest-374de33a-442e-49d6-b6c4-283338743416--68643605-driver-0 --bootstrap-server localhost:9092
+        * -- 4 partitions are subscribed
+        * Even if the newly added partition has 0 events, a batch job will still be created and committed for detecting
+        * the new partition. An empty JSON output file(part-00000-xxx.json) will be committed.
+        * Before altering, the offset is {"example-topic":{"2":2,"1":3,"0":1}}
+        * After altering, the offset is {"example-topic":{"2":2,"1":3,"3":0,"0":1}}
         */
       .option("startingOffsets", kafkaSourceExampleTopic(2))
       //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
