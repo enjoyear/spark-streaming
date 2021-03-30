@@ -1,11 +1,12 @@
 package com.chen.guo.kafka
 
 import com.chen.guo.constant.Constant
-import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, StreamingQueryListener, StreamingQueryManager, Trigger}
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.split
+import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
+import org.apache.spark.sql.streaming._
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -41,6 +42,7 @@ object KafkaSourceFileSink {
   val queryNameKafkaIngest = "kafka-ingest"
   val queryNameRate3 = "rate-3s"
   val topicName = "quickstart-events"
+  private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
@@ -70,7 +72,7 @@ object KafkaSourceFileSink {
       .load()
 
       /**
-        * The default loaded data frame. Below is a row as an example.
+        * The original data frame loaded. See the row below as an example.
         * {
         * "value":"dGhpcyBpcyBtNg==",                    //base64 encoded bytes
         * "topic":"quickstart-events",
@@ -101,42 +103,116 @@ object KafkaSourceFileSink {
     //    .as[(String, String)]
     val kafkaDF = df.select("value", "offset", "tokens", "col1", "col2")
 
-    spark.streams.active.foreach(x => println(s"Before anything starts -- StreamQuery Id: ${x.id}"))
-
-    val qKafkaIngest: StreamingQuery = kafkaDF.writeStream
+    val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
       .queryName(queryNameKafkaIngest)
       .format("json")
       .option("path", Constant.OutputPath)
       .option("checkpointLocation", Constant.CheckpointLocation)
       .outputMode(OutputMode.Append())
       .trigger(Trigger.ProcessingTime("3 seconds"))
-      .start()
 
-    spark.streams.active.foreach(x => println(s"After something started -- Active query: ${x.name}"))
+    //"kafka-ingest" won't be active unless started
+    println(s"Active queries: ${spark.streams.active.map(x => s"${x.name}(${x.id})").mkString(",")}")
+    val qKafkaIngest: StreamingQuery = kafkaIngestWriter.start()
+    //"kafka-ingest" will be included
+    println(s"Active queries: ${spark.streams.active.map(x => s"${x.name}(${x.id})").mkString(",")}")
 
-    sys.addShutdownHook(() => {
-      println("Gracefully stopping Spark Streaming Application")
-      qKafkaIngest.stop
-    })
+    //stopQueriesOption1(spark)
+    //stopQueriesOption2(spark)
+    addShutdownHook(spark)
 
-    terminateOption1(spark)
-    //terminateOption2(spark)
+    waitAllTerminationOption1(spark)
+    //checkTerminationOption2(spark)
 
+    executor.shutdown()
     println(s"Exiting structured streaming application ${appName} now...")
   }
 
-  def terminateOption1(spark: SparkSession): Unit = {
+  /**
+    * Stop queries based on a fixed schedule
+    */
+  def stopQueriesOption1(spark: SparkSession): Unit = {
+    val map = spark.streams.active.map(x => (x.name, x)).toMap
+    executor.schedule(new Runnable {
+      override def run(): Unit = map(queryNameKafkaIngest).stop()
+    }, 10, TimeUnit.SECONDS)
+    executor.schedule(new Runnable {
+      override def run(): Unit = map(queryNameRate3).stop()
+    }, 20, TimeUnit.SECONDS)
+  }
+
+  /**
+    * Stop queries based on some conditions
+    */
+  def stopQueriesOption2(spark: SparkSession): Unit = {
+    executor.schedule(new Runnable {
+      override def run(): Unit = spark.streams.active.foreach(query => {
+        if (canStop(query)) {
+          query.stop()
+        }
+      })
+    }, 30, TimeUnit.SECONDS)
+  }
+
+  /**
+    * Alternative logic can be checking a status file on disk/database at a fixed schedule
+    */
+  def canStop(query: StreamingQuery): Boolean = {
+    /**
+      * query.status example
+      * {
+      * "message" : "Waiting for data to arrive",
+      * "isDataAvailable" : false,
+      * "isTriggerActive" : false
+      * }
+      */
+    println(s"Status for ${query.name}: ${query.status}")
+    //print exception if any
+    query.exception.foreach(streamingQueryException => println(streamingQueryException.toString()))
+
+    // rate-3s won't stop because isDataAvailable is true
+    !query.status.isDataAvailable && !query.status.isTriggerActive && !query.status.message.equals("Initializing sources")
+  }
+
+  /**
+    * To stop
+    * ps -ef | grep KafkaSourceFileSink | grep -v grep | awk '{print $2}' | xargs kill -s SIGTERM
+    */
+  def addShutdownHook(spark: SparkSession): Unit = {
+    /**
+      * Be careful, don't use ()=>{}
+      * https://stackoverflow.com/questions/26944515/scala-shutdown-hooks-never-running
+      * https://stackoverflow.com/questions/4543228/whats-the-difference-between-and-unit
+      */
+    sys.addShutdownHook({
+      // TODO: What are the impacts if kill directly without stopping the queries?
+      // For example, the application or cluster is terminated directly
+      println("Got kill signal. Stopping the Spark Context directly without stopping the queries.")
+      //      spark.streams.active.foreach(x => {
+      //        println(s"Stopping the query ${x.name} ${x.id}")
+      //        x.stop() // will fail because "Cannot call methods on a stopped SparkContext."
+      //      })
+      println(s"Currently active queries count: ${spark.streams.active.length}")
+    })
+  }
+
+  /**
+    * Await all active queries to terminate
+    */
+  def waitAllTerminationOption1(spark: SparkSession): Unit = {
     spark.streams.active.foreach(x => x.awaitTermination())
   }
 
   /**
+    * Await all active queries to terminate
     * References
     * https://stackoverflow.com/questions/52762405/how-to-start-multiple-streaming-queries-in-a-single-spark-application?rq=1
     * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-demo-StreamingQueryManager-awaitAnyTermination-resetTerminated.html
     */
-  def terminateOption2(spark: SparkSession): Unit = {
+  def waitAllTerminationOption2(spark: SparkSession): Unit = {
     while (!spark.streams.active.isEmpty) {
       println("Queries currently still active: " + spark.streams.active.map(x => x.name).mkString(","))
+      //await any to terminate
       spark.streams.awaitAnyTermination()
       spark.streams.resetTerminated()
     }
@@ -144,73 +220,22 @@ object KafkaSourceFileSink {
 }
 
 class MyStreamingQueryListener(sqm: StreamingQueryManager) extends StreamingQueryListener {
-  var maxUpdates = 5
-
   override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
     /**
       * A unique query id that persists across restarts. {@link StreamingQuery.id}
       * RunId is a query id that is unique for every start/restart. {@link StreamingQuery.runId}
       * User specified {@link StreamingQuery.name} of the query. If set, must be unique across all active queries.
       */
-    println(s"Query started at ${queryStarted.timestamp}: name ${queryStarted.name}, query id ${queryStarted.id}, run id ${queryStarted.runId}")
+    println(s"Query ${queryStarted.name} started at ${queryStarted.timestamp}: id ${queryStarted.id}, run id ${queryStarted.runId}")
   }
 
   override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
-    println(s"Query terminated: query id ${queryTerminated.id}, run id ${queryTerminated.runId}, " +
+    println(s"Query terminated: id ${queryTerminated.id}, run id ${queryTerminated.runId}, " +
       s"exception ${queryTerminated.exception.getOrElse("n/a")}")
   }
 
   override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
     //println("Query made progress: " + queryProgress.progress)
     println(s"Query ${queryProgress.progress.name} made progress")
-
-    /**
-      * TODO: how to terminate a structured streaming application gracefully?
-      * 1. https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-demo-StreamingQueryManager-awaitAnyTermination-resetTerminated.html
-      * 2. https://stackoverflow.com/questions/45717433/stop-structured-streaming-query-gracefully
-      * 3. Control by an external file?
-      * https://medium.com/@manojkumardhakad/how-to-do-graceful-shutdown-of-spark-streaming-job-9c910770349c
-      */
-    maxUpdates = maxUpdates - 1
-    if (maxUpdates <= 0) {
-      sqm.active.foreach(query => {
-        if (query.name == KafkaSourceFileSink.queryNameRate3 && maxUpdates > -5) {
-          return
-        }
-
-        /**
-          * query.status example
-          * {
-          * "message" : "Waiting for data to arrive",
-          * "isDataAvailable" : false,
-          * "isTriggerActive" : false
-          * }
-          */
-        println(s"Status for ${query.name}: ${query.status}")
-        println(s"Terminating query ${query.name} ${query.id} ${query.runId}")
-        //print exception if any
-        query.exception.foreach(streamingQueryException => println(streamingQueryException.toString()))
-
-        if (!query.status.isDataAvailable
-          && !query.status.isTriggerActive
-          && !query.status.message.equals("Initializing sources")) {
-          query.stop()
-        }
-        query.stop()
-      })
-    }
-
-    def canStop(query: StreamingQuery, awaitTerminationTimeMs: Long) {
-      while (query.isActive) {
-        val msg = query.status.message
-        if (!query.status.isDataAvailable
-          && !query.status.isTriggerActive
-          && !msg.equals("Initializing sources")) {
-          query.stop()
-        }
-        query.awaitTermination(awaitTerminationTimeMs)
-      }
-    }
   }
-
 }
