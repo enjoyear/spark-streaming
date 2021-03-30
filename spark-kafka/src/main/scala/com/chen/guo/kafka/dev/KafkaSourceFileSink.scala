@@ -52,9 +52,16 @@ import scala.concurrent.duration.DurationInt
 object KafkaSourceFileSink {
 
   val appName = "KafkaIntegration"
-  val queryNameKafkaIngest = "kafka-ingest"
+  val queryNamePrefix = "kfkingest"
+  val consumerGroup = "spark-kafka-ingest"
+
   val queryNameRate3 = "rate-3s"
-  val topicName = "example-topic,quickstart-events"
+  //[GroupIdPrefix, TopicNames, TopicPartition Starting Offsets]
+  val kafkaSourceQuickStartEvents: Array[String] = Array(consumerGroup, "quickstart-events", s"""{"quickstart-events":{"0":-2}}""")
+  val kafkaSourceExampleTopic: Array[String] = Array(consumerGroup, "example-topic", s"""{"example-topic":{"0":-2,"1":-2,"2":-2}}""")
+  val kafkaSourceCombined: Array[String] = Array(consumerGroup, "example-topic,quickstart-events", s"""{"example-topic":{"0":-2,"1":-2,"2":-2},"quickstart-events":{"0":-2}}""")
+
+
   private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor
 
   def main(args: Array[String]): Unit = {
@@ -85,6 +92,26 @@ object KafkaSourceFileSink {
         .start()
     }
 
+    if (true) {
+      //Add multiple streaming queries
+      spark
+        .readStream
+        .format("kafka")
+        .option("kafka.bootstrap.servers", "localhost:9092")
+        .option("groupIdPrefix", kafkaSourceQuickStartEvents(0))
+        .option("subscribe", kafkaSourceQuickStartEvents(1))
+        .option("startingOffsets", kafkaSourceQuickStartEvents(2))
+        .load()
+        .writeStream
+        .queryName(getQueryName(kafkaSourceQuickStartEvents(1)))
+        .format("json")
+        .option("path", getLocalPath(Constant.OutputPath, getQueryName(kafkaSourceQuickStartEvents(1))))
+        .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, getQueryName(kafkaSourceQuickStartEvents(1))))
+        .outputMode(OutputMode.Append())
+        .trigger(Trigger.ProcessingTime("3 seconds"))
+        .start()
+    }
+
     val df: DataFrame = spark
       .readStream
       .format("kafka")
@@ -94,8 +121,8 @@ object KafkaSourceFileSink {
         * "kafka.group.id" can also be set instead
         * Be careful about Kafka group-based authorization
         */
-      .option("groupIdPrefix", "spark-kafka-ingest")
-      .option("subscribe", topicName)
+      .option("groupIdPrefix", kafkaSourceExampleTopic(0))
+      .option("subscribe", kafkaSourceExampleTopic(1))
       //start consuming from the earliest. By default it will be the latest, which is to discard all history
       //.option("startingOffsets", "earliest")
       /**
@@ -105,7 +132,7 @@ object KafkaSourceFileSink {
         *
         * Newly discovered partitions during a query will start at earliest.
         */
-      .option("startingOffsets", s"""{"example-topic":{"0":-2,"1":-2,"2":-2},"quickstart-events":{"0":-2}}""")
+      .option("startingOffsets", kafkaSourceExampleTopic(2))
       //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
       .load()
 
@@ -143,12 +170,12 @@ object KafkaSourceFileSink {
     //.select("key", "data.*")  //flatten the nested columns within data
 
     val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
-      .queryName(queryNameKafkaIngest)
+      .queryName(getQueryName(kafkaSourceExampleTopic(1)))
       //TODO try partition
       //.partitionBy("")
       .format("json")
-      .option("path", getLocalPath(Constant.OutputPath, queryNameKafkaIngest))
-      .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, queryNameKafkaIngest))
+      .option("path", getLocalPath(Constant.OutputPath, getQueryName(kafkaSourceExampleTopic(1))))
+      .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, getQueryName(kafkaSourceExampleTopic(1))))
       .outputMode(OutputMode.Append())
       .trigger(Trigger.ProcessingTime("3 seconds"))
 
@@ -174,7 +201,9 @@ object KafkaSourceFileSink {
     println(s"Exiting structured streaming application ${appName} now...")
   }
 
-  def getLocalPath(rootDir: String, queryName: String) = s"${rootDir}/${queryName}"
+  def getQueryName(topicNames: String): String = s"${queryNamePrefix}-${topicNames}"
+
+  def getLocalPath(rootDir: String, queryName: String): String = s"${rootDir}/${queryName}"
 
   /**
     * Stop queries based on a fixed schedule
@@ -182,7 +211,7 @@ object KafkaSourceFileSink {
   def stopQueriesOption1(spark: SparkSession): Unit = {
     val map = spark.streams.active.map(x => (x.name, x)).toMap
     executor.schedule(new Runnable {
-      override def run(): Unit = map(queryNameKafkaIngest).stop()
+      override def run(): Unit = map(getQueryName(kafkaSourceExampleTopic(1))).stop()
     }, 10, TimeUnit.SECONDS)
     executor.schedule(new Runnable {
       override def run(): Unit = map(queryNameRate3).stop()

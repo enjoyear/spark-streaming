@@ -1,0 +1,17 @@
+Checks on the Kafka side:
+
+$ ./bin/kafka-consumer-groups.sh --list --bootstrap-server localhost:9092
+spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0
+spark-kafka-ingest-751a43bc-15e4-4f9a-a8e4-f553c30c56b7-1922733168-driver-0
+
+$ ./bin/kafka-consumer-groups.sh --describe --group spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0 --bootstrap-server localhost:9092
+
+GROUP                                                                      TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                                                                                HOST            CLIENT-ID
+spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0 example-topic   0          -               1               -               consumer-spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0-2-6d7cb476-5a9b-47f7-a770-75c4b9213379 /127.0.0.1      consumer-spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0-2
+spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0 example-topic   1          -               3               -               consumer-spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0-2-6d7cb476-5a9b-47f7-a770-75c4b9213379 /127.0.0.1      consumer-spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0-2
+spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0 example-topic   2          -               1               -               consumer-spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0-2-6d7cb476-5a9b-47f7-a770-75c4b9213379 /127.0.0.1      consumer-spark-kafka-ingest-77c2d0d3-3486-4708-b1bf-65f1ae9d4829--68643605-driver-0-2
+
+$ ./bin/kafka-consumer-groups.sh --describe --group spark-kafka-ingest-751a43bc-15e4-4f9a-a8e4-f553c30c56b7-1922733168-driver-0 --bootstrap-server localhost:9092
+GROUP                                                                       TOPIC             PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                                                                                 HOST            CLIENT-ID
+spark-kafka-ingest-751a43bc-15e4-4f9a-a8e4-f553c30c56b7-1922733168-driver-0 quickstart-events 0          -               11              -               consumer-spark-kafka-ingest-751a43bc-15e4-4f9a-a8e4-f553c30c56b7-1922733168-driver-0-1-e71cb6b6-a31e-42a7-87c0-af9bb377ab03 /127.0.0.1      consumer-spark-kafka-ingest-751a43bc-15e4-4f9a-a8e4-f553c30c56b7-1922733168-driver-0-1
+

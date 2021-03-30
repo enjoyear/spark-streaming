@@ -6,3 +6,16 @@ part-00003-91f434a3-6111-4951-baad-9f5312a0085d-c000.json
 
 There are 2 part-00000 output files in this example because another event is produced for the topic example-topic at
 partition 1, which can be verified by comparing checkpoint/kafka-ingest/offsets/0 and checkpoint/kafka-ingest/offsets/1
+
+
+Checks on the Kafka side:
+$ ./bin/kafka-consumer-groups.sh --list --bootstrap-server localhost:9092
+spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0
+
+$ ./bin/kafka-consumer-groups.sh --describe --group spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0 --bootstrap-server localhost:9092
+
+GROUP                                                                       TOPIC             PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                                                                                 HOST            CLIENT-ID
+spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0 quickstart-events 0          -               11              -               consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1-a0e6af96-4630-440a-b4fc-f6b0a20c6b9a /127.0.0.1      consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1
+spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0 example-topic     0          -               1               -               consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1-a0e6af96-4630-440a-b4fc-f6b0a20c6b9a /127.0.0.1      consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1
+spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0 example-topic     1          -               3               -               consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1-a0e6af96-4630-440a-b4fc-f6b0a20c6b9a /127.0.0.1      consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1
+spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0 example-topic     2          -               1               -               consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1-a0e6af96-4630-440a-b4fc-f6b0a20c6b9a /127.0.0.1      consumer-spark-kafka-ingest-908c8b4d-07ac-4fdb-b383-192512887205-1221582759-driver-0-1

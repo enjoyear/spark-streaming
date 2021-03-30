@@ -1,0 +1,4 @@
+v1
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kfkingest-example-topic/part-00000-ca79f018-b93d-4154-9c05-a505351b32d3-c000.json","size":220,"isDir":false,"modificationTime":1617129602197,"blockReplication":1,"blockSize":33554432,"action":"add"}
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kfkingest-example-topic/part-00001-5b9c4618-b1f4-4caa-a8f4-770018a481d4-c000.json","size":77,"isDir":false,"modificationTime":1617129603105,"blockReplication":1,"blockSize":33554432,"action":"add"}
+{"path":"file:///Users/chguo/Downloads/kafka-ingest/ingested/kfkingest-example-topic/part-00002-2841bd22-cfa6-4e02-9dbd-79984735259a-c000.json","size":67,"isDir":false,"modificationTime":1617129603108,"blockReplication":1,"blockSize":33554432,"action":"add"}
