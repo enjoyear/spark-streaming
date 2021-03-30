@@ -31,7 +31,7 @@ import scala.concurrent.duration.DurationInt
   *
   * Step 4: Populate some events
   * emp100:{"emp_id":100,"first_name":"Keshav","last_name":"L"}
-  * emp101:{"emp_id":101,"first_name":"Mike","last_name":"M"}
+  * emp101:{"emp_id":101,"first_name":"Mike","last_name":"M"}   //duplicate any event here to create a skewed dataset
   * emp105:{"emp_id":105,"first_name":"Tree","last_name":"T"}
   *
   * Bad messages
@@ -48,6 +48,7 @@ import scala.concurrent.duration.DurationInt
   * Other reads:
   * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-MicroBatchExecution.html
   * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-offsets-and-metadata-checkpointing.html
+  * https://www.waitingforcode.com/apache-spark-structured-streaming/apache-kafka-source-structured-streaming-beyond-offsets/read
   */
 object KafkaSourceFileSink {
 
@@ -69,6 +70,25 @@ object KafkaSourceFileSink {
       .builder
       .master("local[2]")
       .appName(appName)
+
+      /**
+        * In Spark 3.0 and before Spark uses KafkaConsumer for offset fetching which could cause infinite wait in the driver.
+        * See one issue here: https://issues.apache.org/jira/browse/SPARK-28367
+        *
+        * The default value is true. Set to false allowing Spark to use new offset fetching mechanism using AdminClient
+        * instead of KafkaConsumer.
+        *
+        * The {@link org.apache.kafka.clients.admin.KafkaAdminClient} will be created when set false
+        *
+        * ACL Check: The following ACLs are needed from driver perspective
+        * - Topic resource describe operation
+        * Since AdminClient in driver is not connecting to consumer group, group.id based authorization will not work anymore
+        * (executors never done group based authorization).
+        * Worth to mention executor side is behaving the exact same way like before (group prefix and override works).
+        *
+        * Ref: https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html#offset-fetching
+        */
+      .config("spark.sql.streaming.kafka.useDeprecatedOffsetFetching", false)
       .getOrCreate()
 
     // https://kontext.tech/column/spark/457/tutorial-turn-off-info-logs-in-spark
@@ -119,9 +139,16 @@ object KafkaSourceFileSink {
 
       /**
         * "kafka.group.id" can also be set instead
-        * Be careful about Kafka group-based authorization
+        * ACL Check: Kafka group-based authorization
         */
       .option("groupIdPrefix", kafkaSourceExampleTopic(0))
+
+      /**
+        * Another option is to use "assign" mode, where you don't have to consume all partitions for a topic
+        * for example
+        * .option("assign", """{"example-topic":[0,2]}""")   //this is to just consume from partition 0 and 2
+        * .option("startingOffsets", s"""{"example-topic":{"0":-2,"2":-2}}""")
+        */
       .option("subscribe", kafkaSourceExampleTopic(1))
       //start consuming from the earliest. By default it will be the latest, which is to discard all history
       //.option("startingOffsets", "earliest")
@@ -132,7 +159,7 @@ object KafkaSourceFileSink {
         *
         * Note that Spark automatically detects newly added partitions. Newly discovered partitions during a query will
         * start at earliest.
-        * Experiment
+        * To experiment:
         * 1. Begin with
         * $ bin/kafka-consumer-groups.sh --describe --group spark-kafka-ingest-374de33a-442e-49d6-b6c4-283338743416--68643605-driver-0 --bootstrap-server localhost:9092
         * -- Only 3 partitions are subscribed
@@ -150,6 +177,26 @@ object KafkaSourceFileSink {
         */
       .option("startingOffsets", kafkaSourceExampleTopic(2))
       //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
+
+      /**
+        * KafkaOffsetRangeCalculator calculates offset ranges to process based on the from and until offsets, and the
+        * configured `minPartitions`, then assign each task to a executor. Apache Spark will try to always allocate the
+        * consumers reading given partition on the same executor. Therefore, it's okay to have more partitions than
+        * the number of Kafka topic partitions.
+        *
+        * If `minPartitions` is not set or is set less than or equal the number of `topicPartitions` that we're going to
+        * consume, then we fall back to a 1-1 mapping of Spark tasks to Kafka partitions. If `numPartitions` is set
+        * higher than the number of our `topicPartitions`, then we will split up the read tasks of the skewed partitions
+        * to multiple Spark tasks.
+        *
+        * The number of Spark tasks will be approximately `numPartitions`. It can be less or more depending on rounding
+        * errors or Kafka partitions that didn't receive any new data.
+        *
+        * To experiment:
+        * Find an event and duplicate it several times in the kafka-console-producer.sh and restart the streaming
+        * ingestion. You will find that 4 part-0000x- files will be generated even if there are only 3 topic partitions.
+        */
+      .option("minPartitions", 4)
       .load()
 
       /**

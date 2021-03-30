@@ -46,7 +46,15 @@ For `./ingested/kafka-ingest/part-00001-cd15d0d5-824c-48d8-8fc9-40f927d86ba2-c00
 ```
 Two rows are ingested in current batch for the Topic example-topic Partition 1.
 
-Be careful that this "part-00001-" does NOT statically map to a TopicPartition. The number 00001 indicates how many output files are generated. It's 0-based. If there is only one TopicPartition ingested for current batch job, a part-00000- file will be created. If there are two TopicPartitions ingested for current batch job, part-00000- and part-00001- will be created, and they will be referenced in the _spark_metadata file.
+Be careful that this "part-00001-" does NOT statically map to a TopicPartition. 
+The number 00001 indicates how many output files are generated. It's 0-based. 
+If there is only one TopicPartition ingested for current batch job, a part-00000- file will be created.
+If there are two TopicPartitions ingested for current batch job, 
+part-00000- and part-00001- will be created, and they will be referenced in the _spark_metadata file.
+
+In fact, each of the "part-xxxxx-" file is mapped to a Spark task for current micro-batch job, where its metadata
+(topic, partition, start-offset, end-offset) has been predefined when the micro-batch job starts by the driver.
+
 
 
 
