@@ -1,0 +1,8 @@
+These 4 files were created when the pipeline starts
+part-00000-a0a04bbc-a808-4d6a-a821-4b882bbf832e-c000.json
+part-00001-552986ce-81d1-4826-b7ef-6c9a1d773010-c000.json   //this is for the topic "quickstart-events". It's empty because the schema doesn't match
+part-00002-f66bc336-d061-49a4-87d7-d0eddab2b4c2-c000.json
+part-00003-91f434a3-6111-4951-baad-9f5312a0085d-c000.json
+
+There are 2 part-00000 output files in this example because another event is produced for the topic example-topic at
+partition 1, which can be verified by comparing checkpoint/kafka-ingest/offsets/0 and checkpoint/kafka-ingest/offsets/1
