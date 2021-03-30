@@ -1,6 +1,7 @@
-package com.chen.guo.kafka
+package com.chen.guo.kafka.dev
 
 import com.chen.guo.constant.Constant
+import com.chen.guo.kafka.KafkaSourceConsoleSink
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.streaming._
@@ -11,10 +12,37 @@ import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration.DurationInt
 
 /**
+  *
   * Read {@link KafkaSourceConsoleSink}'s doc for more setup details
+  * Step 1: Create the testing topic
+  * bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic example-topic
+  * bin/kafka-topics.sh --create --topic example-topic --bootstrap-server localhost:9092 \
+  * --partitions 3 --replication-factor 1
+  * bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic example-topic
+  *
+  * Step 2: Start the consumer
+  * bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic example-topic
+  *
+  * Step 3: Start the producer
+  * bin/kafka-console-producer.sh --help
+  * bin/kafka-console-producer.sh --broker-list localhost:9092 --topic example-topic \
+  * --property "parse.key=true" --property "key.separator=:"
+  *
+  * Step 4: Populate some events
+  * emp100:{"emp_id":100,"first_name":"Keshav","last_name":"L"}
+  * emp101:{"emp_id":101,"first_name":"Mike","last_name":"M"}
+  * emp105:{"emp_id":105,"first_name":"Tree","last_name":"T"}
+  *
+  * Bad messages
+  * emp102:{"emp_id":"102c","first_name":"BadIdType","last_name":"B"}
+  * emp103:{"emp_id":103,"first_name":"ExtraField","last_name":"E", "age":33}
+  * emp104:{"first_name":"MissingField","last_name":"M"}
+  *
+  * Other reads:
   * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-MicroBatchExecution.html
   * https://jaceklaskowski.gitbooks.io/spark-structured-streaming/content/spark-sql-streaming-offsets-and-metadata-checkpointing.html
   *
+  * Folder structure:
   * ├── checkpoint
   * │   ├── commits
   * │   │   ├── 0     //3 for each batch: step 4. add a file indicating committed
@@ -37,23 +65,6 @@ import scala.concurrent.duration.DurationInt
   * │   ├── part-00000-84d67966-b3d7-4e95-8a32-514008a43fc3-c000.json
   * │   └── part-00000-adc7631d-98fc-493e-be05-4ea1aa1d5f57-c000.json
   *
-  *
-  * Create topics with keys. Follow examples here
-  * https://stackoverflow.com/questions/62070151/how-to-send-key-value-messages-with-the-kafka-console-producer
-  *
-  * bin/kafka-console-producer.sh --broker-list localhost:9092 --topic example-topic \
-  * --property "parse.key=true" --property "key.separator=:"
-  *
-  * emp100:{"emp_id":100,"first_name":"Keshav","last_name":"Lodhi"}
-  * emp101:{"emp_id":101,"first_name":"Mike","last_name":"M"}
-  * emp105:{"emp_id":105,"first_name":"Tree","last_name":"T"}
-  *
-  * Bad messages
-  * emp102:{"emp_id":"102c","first_name":"BadIdType","last_name":"B"}
-  * emp103:{"emp_id":103,"first_name":"ExtraField","last_name":"E", "age":33}
-  * emp104:{"first_name":"MissingField","last_name":"M"}
-  *
-  * bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic example-topic
   */
 object KafkaSourceFileSink {
 
@@ -98,7 +109,7 @@ object KafkaSourceFileSink {
       .option("subscribe", topicName)
       //start consuming from the earliest. By default it will be the latest, which is to discard all history
       //.option("startingOffsets", "earliest")
-      .option("startingOffsets", s"""{"$topicName":{"0":-2}}""")
+      .option("startingOffsets", s"""{"$topicName":{"0":-2,"1":-2,"2":-2}}""")
       //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
       .load()
 
@@ -122,7 +133,8 @@ object KafkaSourceFileSink {
       * If the schema, from_json(df("json"), TestTopicSchema.employeeSchema), is not provided, the JSON will be ingested
       * as it is
       *
-      * If the schema, from_json(df("json"), TestTopicSchema.employeeSchema), is provided,
+      * If the schema is provided, e.g.
+      * df.select(df("key"), from_json(df("json"), TestTopicSchema.employeeSchema).as("data")),
       * then the following columns will not be included
       * 1. Columns where the types don't match the schema
       * 2. Extra columns that are not defined in the schema
@@ -132,7 +144,7 @@ object KafkaSourceFileSink {
       * https://databricks.com/blog/2017/02/23/working-complex-data-formats-structured-streaming-apache-spark-2-1.html
       */
     val kafkaDF = df.select(df("key"), from_json(df("json"), TestTopicSchema.employeeSchema).as("data"))
-      //.select("key", "data.*")  //flatten the nested columns within data
+    //.select("key", "data.*")  //flatten the nested columns within data
 
     val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
       .queryName(queryNameKafkaIngest)
