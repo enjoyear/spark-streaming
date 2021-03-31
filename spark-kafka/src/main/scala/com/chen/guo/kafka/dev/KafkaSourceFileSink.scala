@@ -272,17 +272,19 @@ object KafkaSourceFileSink {
       * https://databricks.com/blog/2017/02/23/working-complex-data-formats-structured-streaming-apache-spark-2-1.html
       */
     val kafkaDF = df.select(
-      df("timestamp"),
-      df("key"),
-      from_json(df("json"), TestTopicSchema.employeeSchema).as("data"),
+      to_date(col("timestamp"), "yyyy-MM-dd").as("day"),
+      hour(col("timestamp")).as("hour"),
+      minute(col("timestamp")).as("minute"),
+      col("timestamp"),
+      col("key"),
+      from_json(col("json"), TestTopicSchema.employeeSchema).as("data"),
       //Find the header with name = "header1" and use its value as a column
       expr("filter(headers, header -> header.key == 'header1')[0].value").as("header1"))
     //.select("key", "data.*")  //flatten the nested columns within data, but physical plan doesn't look optimal
 
     val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
       .queryName(getQueryName(kafkaSourceExampleTopic(1)))
-      //TODO try partition
-      //.partitionBy("")
+      .partitionBy("day", "hour", "minute")
       .format("json")
       .option("path", getLocalPath(Constant.OutputPath, getQueryName(kafkaSourceExampleTopic(1))))
       .option("checkpointLocation", getLocalPath(Constant.CheckpointLocation, getQueryName(kafkaSourceExampleTopic(1))))

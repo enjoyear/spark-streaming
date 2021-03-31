@@ -54,6 +54,8 @@ part-00000- and part-00001- will be created, and they will be referenced in the 
 
 In fact, each of the "part-xxxxx-" file is mapped to a Spark task for current micro-batch job, where its metadata
 (topic, partition, start-offset, end-offset) has been predefined when the micro-batch job starts by the driver.
+When the output needs to be partitioned, a "part-xxxxx-" file needs to be further split into more granular pieces.
+
 
 
 
