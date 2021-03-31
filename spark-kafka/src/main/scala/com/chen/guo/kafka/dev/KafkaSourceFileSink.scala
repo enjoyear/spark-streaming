@@ -2,13 +2,19 @@ package com.chen.guo.kafka.dev
 
 import com.chen.guo.constant.Constant
 import com.chen.guo.kafka.KafkaSourceConsoleSink
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.TopicPartition
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.streaming._
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
+import java.text.SimpleDateFormat
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
+import java.{util => ju}
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -423,9 +429,54 @@ class MyStreamingQueryListener(sqm: StreamingQueryManager) extends StreamingQuer
       s"exception ${queryTerminated.exception.getOrElse("n/a")}")
   }
 
+  // for monitoring purpose
   override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
-    //println("Query made progress: " + queryProgress.progress)
-    println(s"Query ${queryProgress.progress.name} made progress")
+    println(s"${new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(System.currentTimeMillis)}: Query ${queryProgress.progress.name} made progress. " +
+      s"Time take for retrieving latestOffset: ${queryProgress.progress.durationMs.get("latestOffset")}")
+
+    if (queryProgress.progress.numInputRows <= 0)
+      return
+
+    queryProgress.progress.sources.foreach(source => {
+      println(s"InputRows/s ${source.inputRowsPerSecond}, ProcessedRows/s ${source.processedRowsPerSecond}")
+      if (source.startOffset == null) {
+        val startOffsetMap = getOffsetMap(source.startOffset)
+        println("Start offset: " + startOffsetMap)
+      } else {
+        println("Start offset: N/A")
+      }
+
+
+      val endOffsetMap = getOffsetMap(source.endOffset)
+      println("End offset: " + endOffsetMap)
+    })
+  }
+
+  /**
+    * @param offset Example of the offset string below
+    *               "example-topic" : {
+    *               "2" : 7,
+    *               "1" : 12,
+    *               "0" : 5
+    *               }
+    */
+  def getOffsetMap(offset: String): ju.HashMap[TopicPartition, OffsetAndMetadata] = {
+    val objectMapper = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+      .configure(DeserializationFeature.USE_LONG_FOR_INTS, true)
+      .registerModule(DefaultScalaModule)
+
+    val offsetMap = objectMapper.readValue(offset, classOf[Map[String, Map[String, Long]]])
+
+    val topicPartitionsOffset: ju.HashMap[TopicPartition, OffsetAndMetadata] = new ju.HashMap[TopicPartition, OffsetAndMetadata]()
+    for ((topicName, partitionEndOffset) <- offsetMap) {
+      for ((partition, offset) <- partitionEndOffset) {
+        val topicPartition = new TopicPartition(topicName, partition.toInt)
+        val offsetAndMetadata = new OffsetAndMetadata(offset)
+        topicPartitionsOffset.put(topicPartition, offsetAndMetadata)
+      }
+    }
+    topicPartitionsOffset
   }
 }
 
