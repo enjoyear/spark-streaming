@@ -11,6 +11,7 @@ import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent
 import org.apache.spark.sql.streaming._
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.slf4j.LoggerFactory
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
@@ -70,6 +71,7 @@ import scala.concurrent.duration.DurationInt
   * https://www.waitingforcode.com/apache-spark-structured-streaming/apache-kafka-source-structured-streaming-beyond-offsets/read
   */
 object KafkaSourceFileSink {
+  val logger = LoggerFactory.getLogger(this.getClass)
 
   val appName = "KafkaIntegration"
   val queryNamePrefix = "kfkingest"
@@ -113,6 +115,7 @@ object KafkaSourceFileSink {
     // https://kontext.tech/column/spark/457/tutorial-turn-off-info-logs-in-spark
     // info log is too much
     spark.sparkContext.setLogLevel("WARN")
+
     // Must be placed before the DataStreamWriter.start(), otherwise onQueryStarted won't be called
     spark.streams.addListener(new MyStreamingQueryListener(spark.streams))
 
@@ -298,10 +301,10 @@ object KafkaSourceFileSink {
       .trigger(Trigger.ProcessingTime("3 seconds"))
 
     //"kafka-ingest" won't be active unless started
-    println(s"Active queries: ${spark.streams.active.map(x => s"${x.name}(${x.id})").mkString(",")}")
+    logger.info(s"Active queries: ${spark.streams.active.map(x => s"${x.name}(${x.id})").mkString(",")}")
     val qKafkaIngest: StreamingQuery = kafkaIngestWriter.start()
     //"kafka-ingest" will be included
-    println(s"Active queries: ${spark.streams.active.map(x => s"${x.name}(${x.id})").mkString(",")}")
+    logger.info(s"Active queries: ${spark.streams.active.map(x => s"${x.name}(${x.id})").mkString(",")}")
 
     //stopQueriesOption1(spark)
     //stopQueriesOption2(spark)
@@ -316,7 +319,7 @@ object KafkaSourceFileSink {
     //checkTerminationOption2(spark)
 
     executor.shutdown()
-    println(s"Exiting structured streaming application ${appName} now...")
+    logger.info(s"Exiting structured streaming application ${appName} now...")
   }
 
   def getQueryName(topicNames: String): String = s"${queryNamePrefix}-${topicNames}"
@@ -361,9 +364,9 @@ object KafkaSourceFileSink {
       * "isTriggerActive" : false
       * }
       */
-    println(s"Status for ${query.name}: ${query.status}")
+    logger.info(s"Status for ${query.name}: ${query.status}")
     //print exception if any
-    query.exception.foreach(streamingQueryException => println(streamingQueryException.toString()))
+    query.exception.foreach(streamingQueryException => logger.info(streamingQueryException.toString()))
 
     // rate-3s won't stop because isDataAvailable is true
     !query.status.isDataAvailable && !query.status.isTriggerActive && !query.status.message.equals("Initializing sources")
@@ -382,12 +385,12 @@ object KafkaSourceFileSink {
     sys.addShutdownHook({
       // TODO: What are the impacts if kill directly without stopping the queries?
       // For example, the application or cluster is terminated directly
-      println("Got kill signal. Stopping the Spark Context directly without stopping the queries.")
+      logger.info("Got kill signal. Stopping the Spark Context directly without stopping the queries.")
       //      spark.streams.active.foreach(x => {
-      //        println(s"Stopping the query ${x.name} ${x.id}")
+      //        logger.info(s"Stopping the query ${x.name} ${x.id}")
       //        x.stop() // will fail because "Cannot call methods on a stopped SparkContext."
       //      })
-      println(s"Currently active queries count: ${spark.streams.active.length}")
+      logger.info(s"Currently active queries count: ${spark.streams.active.length}")
     })
   }
 
@@ -406,7 +409,7 @@ object KafkaSourceFileSink {
     */
   def waitAllTerminationOption2(spark: SparkSession): Unit = {
     while (!spark.streams.active.isEmpty) {
-      println("Queries currently still active: " + spark.streams.active.map(x => x.name).mkString(","))
+      logger.info("Queries currently still active: " + spark.streams.active.map(x => x.name).mkString(","))
       //await any to terminate
       spark.streams.awaitAnyTermination()
       spark.streams.resetTerminated()
@@ -415,40 +418,41 @@ object KafkaSourceFileSink {
 }
 
 class MyStreamingQueryListener(sqm: StreamingQueryManager) extends StreamingQueryListener {
+  val logger = LoggerFactory.getLogger(this.getClass)
+
   override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
     /**
       * A unique query id that persists across restarts. {@link StreamingQuery.id}
       * RunId is a query id that is unique for every start/restart. {@link StreamingQuery.runId}
       * User specified {@link StreamingQuery.name} of the query. If set, must be unique across all active queries.
       */
-    println(s"Query ${queryStarted.name} started at ${queryStarted.timestamp}: id ${queryStarted.id}, run id ${queryStarted.runId}")
+    logger.info(s"Query ${queryStarted.name} started at ${queryStarted.timestamp}: id ${queryStarted.id}, run id ${queryStarted.runId}")
   }
 
   override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
-    println(s"Query terminated: id ${queryTerminated.id}, run id ${queryTerminated.runId}, " +
+    logger.info(s"Query terminated: id ${queryTerminated.id}, run id ${queryTerminated.runId}, " +
       s"exception ${queryTerminated.exception.getOrElse("n/a")}")
   }
 
   // for monitoring purpose
   override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
-    println(s"${new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(System.currentTimeMillis)}: Query ${queryProgress.progress.name} made progress. " +
+    logger.info(s"${new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(System.currentTimeMillis)}: Query ${queryProgress.progress.name} made progress. " +
       s"Time take for retrieving latestOffset: ${queryProgress.progress.durationMs.get("latestOffset")}")
 
     if (queryProgress.progress.numInputRows <= 0)
       return
 
     queryProgress.progress.sources.foreach(source => {
-      println(s"InputRows/s ${source.inputRowsPerSecond}, ProcessedRows/s ${source.processedRowsPerSecond}")
+      logger.info(s"InputRows/s ${source.inputRowsPerSecond}, ProcessedRows/s ${source.processedRowsPerSecond}")
       if (source.startOffset == null) {
-        val startOffsetMap = getOffsetMap(source.startOffset)
-        println("Start offset: " + startOffsetMap)
+        logger.info("Start offset: N/A")
       } else {
-        println("Start offset: N/A")
+        val startOffsetMap = getOffsetMap(source.startOffset)
+        logger.info("Start offset: " + startOffsetMap)
       }
 
-
       val endOffsetMap = getOffsetMap(source.endOffset)
-      println("End offset: " + endOffsetMap)
+      logger.info("End offset: " + endOffsetMap)
     })
   }
 
