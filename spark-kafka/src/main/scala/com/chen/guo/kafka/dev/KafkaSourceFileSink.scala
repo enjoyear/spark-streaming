@@ -44,9 +44,9 @@ import scala.concurrent.duration.DurationInt
   * https://docs.confluent.io/platform/current/app-development/kafkacat-usage.html
   *
   * To produce:
-  * echo "emp106:{"emp_id":106,"first_name":"Tracy","last_name":"T"}" | kafkacat -b localhost:9092 -t example-topic -K: -H "header1=value1" -H "nullheader"
+  * echo 'emp106:{"emp_id":106,"first_name":"Tracy","last_name":"T"}' | kafkacat -P -b localhost:9092 -t example-topic -K: -H "header1=value1" -H "nullheader"
   * (header value will be serialized, but not the header key? That's why we have usecases like nullheader??)
-  * echo "emp107:{"emp_id":107,"first_name":"Tame","last_name":"T"}" | kafkacat -b localhost:9092 -t example-topic -K:
+  * echo 'emp107:{"emp_id":107,"first_name":"Tame","last_name":"T"}' | kafkacat -P -b localhost:9092 -t example-topic -K:
   * kafkacat -P -b localhost:9092 -t example-topic -l records.json
   *
   * To consume:
@@ -189,6 +189,23 @@ object KafkaSourceFileSink {
         * After altering, the offset is {"example-topic":{"2":2,"1":3,"3":0,"0":1}}
         */
       .option("startingOffsets", kafkaSourceExampleTopic(2))
+
+      /**
+        * startingOffsetsByTimestamp takes precedence over startingOffsets.
+        *
+        * When startingOffsetsByTimestamp is used, the timestamp will be firstly translated into offsets and kept in the
+        * checkpoint/.../sources/0/0 file. Newly discovered partitions during a query will start at earliest.
+        *
+        * Example:
+        * .option("startingOffsetsByTimestamp", s"""{"example-topic":{"0":1617163070574,"1":1617140874379,"2":1617153761857}}""")
+        *
+        * To experiment:
+        * Run the command below to select a timestamp for each column
+        * kafkacat -b localhost:9092 -C -t example-topic -f '\nHeader: %h\nKey (%K bytes): %k\nValue (%S bytes): %s\nTimestamp: %T\tPartition: %p\tOffset: %o\n--\n'
+        *
+        * Verify that the events ingested match the selection of the timestamp for each partition
+        */
+      //.option("startingOffsetsByTimestamp", s"""{"example-topic":{"0":1617163070574,"1":1617140874379,"2":1617153761857}}""")
       //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
 
       /**
@@ -221,9 +238,16 @@ object KafkaSourceFileSink {
         * "topic":"example-topic",
         * "partition":0,
         * "offset":5,
-        * "timestamp":"2021-03-28T18:22:18.819-07:00",   //message produced time
+        * "timestamp":"2021-03-28T18:22:18.819-07:00",   //It's a message CreateTime based on the timestampType
+        *
+        * //This timestampType comes from https://github.com/apache/spark/blob/master/external/kafka-0-10-sql/src/main/scala/org/apache/spark/sql/kafka010/KafkaSourceRDD.scala#L87
+        * //which further references {@link org.apache.kafka.common.record.TimestampType}
+        * //This is a cluster-wide configuration on the Kafka side, with the configuration key "log.message.timestamp.type"
+        * //Read more at https://kafka.apache.org/documentation/#brokerconfigs_log.message.timestamp.type
         * "timestampType":0
-        * "headers":[{"key":"header1","value":"dmFsdWUx"},{"key":"nullheader"}]  //optional field, included in the row only when "includeHeaders" is set to true
+        *
+        * //"headers" is an optional field, it's included in the row only when "includeHeaders" is set to true
+        * "headers":[{"key":"header1","value":"dmFsdWUx"},{"key":"nullheader"}]
         * }
         */
       // Another example for adding extra columns
