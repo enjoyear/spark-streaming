@@ -39,6 +39,19 @@ import scala.concurrent.duration.DurationInt
   * emp103:{"emp_id":103,"first_name":"ExtraField","last_name":"E", "age":33}
   * emp104:{"first_name":"MissingField","last_name":"M"}
   *
+  * To send Kafka messages with headers, you need to install "brew install kafkacat"
+  * https://github.com/edenhill/kafkacat
+  * https://docs.confluent.io/platform/current/app-development/kafkacat-usage.html
+  *
+  * To produce:
+  * echo "emp106:{"emp_id":106,"first_name":"Tracy","last_name":"T"}" | kafkacat -b localhost:9092 -t example-topic -K: -H "header1=value1" -H "nullheader"
+  * (header value will be serialized, but not the header key? That's why we have usecases like nullheader??)
+  * echo "emp107:{"emp_id":107,"first_name":"Tame","last_name":"T"}" | kafkacat -b localhost:9092 -t example-topic -K:
+  * kafkacat -P -b localhost:9092 -t example-topic -l records.json
+  *
+  * To consume:
+  * kafkacat -b localhost:9092 -C -t example-topic -f '\nHeader: %h\nKey (%K bytes): %k\nValue (%S bytes): %s\nTimestamp: %T\tPartition: %p\tOffset: %o\n--\n'
+  *
   * Other commands:
   * List kafka consumer groups(Ref: https://www.baeldung.com/ops/listing-kafka-consumers)
   * -- ./bin/kafka-consumer-groups.sh --list --bootstrap-server localhost:9092
@@ -181,8 +194,8 @@ object KafkaSourceFileSink {
       /**
         * KafkaOffsetRangeCalculator calculates offset ranges to process based on the from and until offsets, and the
         * configured `minPartitions`, then assign each task to a executor. Apache Spark will try to always allocate the
-        * consumers reading given partition on the same executor. Therefore, it's okay to have more partitions than
-        * the number of Kafka topic partitions.
+        * consumers reading given partition on the same executor so that the cached consumers can be reused and not evicted.
+        * Therefore, it's okay to have more partitions than the number of Kafka topic partitions.
         *
         * If `minPartitions` is not set or is set less than or equal the number of `topicPartitions` that we're going to
         * consume, then we fall back to a 1-1 mapping of Spark tasks to Kafka partitions. If `numPartitions` is set
@@ -197,6 +210,7 @@ object KafkaSourceFileSink {
         * ingestion. You will find that 4 part-0000x- files will be generated even if there are only 3 topic partitions.
         */
       .option("minPartitions", 4)
+      .option("includeHeaders", "true")
       .load()
 
       /**
@@ -209,15 +223,19 @@ object KafkaSourceFileSink {
         * "offset":5,
         * "timestamp":"2021-03-28T18:22:18.819-07:00",   //message produced time
         * "timestampType":0
+        * "headers":[{"key":"header1","value":"dmFsdWUx"},{"key":"nullheader"}]  //optional field, included in the row only when "includeHeaders" is set to true
         * }
         */
       // Another example for adding extra columns
       // https://stackoverflow.com/questions/46130191/why-do-id-and-runid-change-every-start-of-a-streaming-query
-      .selectExpr("CAST(key AS STRING) as key", "CAST(value AS STRING) as json")
+      .selectExpr("timestamp",
+        "CAST(key AS STRING) as key",
+        "CAST(value AS STRING) as json",
+        "CAST(headers AS ARRAY<STRUCT<key:STRING,value:STRING>>) as headers")
 
     /**
-      * If the schema, from_json(df("json"), TestTopicSchema.employeeSchema), is not provided, the JSON will be ingested
-      * as it is
+      * If the schema, from_json(df("json"), TestTopicSchema.employeeSchema), is not provided, the JSON will be
+      * ingested as it is
       *
       * If the schema is provided, e.g.
       * df.select(df("key"), from_json(df("json"), TestTopicSchema.employeeSchema).as("data")),
@@ -229,8 +247,13 @@ object KafkaSourceFileSink {
       * Ref:
       * https://databricks.com/blog/2017/02/23/working-complex-data-formats-structured-streaming-apache-spark-2-1.html
       */
-    val kafkaDF = df.select(df("key"), from_json(df("json"), TestTopicSchema.employeeSchema).as("data"))
-    //.select("key", "data.*")  //flatten the nested columns within data
+    val kafkaDF = df.select(
+      df("timestamp"),
+      df("key"),
+      from_json(df("json"), TestTopicSchema.employeeSchema).as("data"),
+      //Find the header with name = "header1" and use its value as a column
+      expr("filter(headers, header -> header.key == 'header1')[0].value").as("header1"))
+    //.select("key", "data.*")  //flatten the nested columns within data, but physical plan doesn't look optimal
 
     val kafkaIngestWriter: DataStreamWriter[Row] = kafkaDF.writeStream
       .queryName(getQueryName(kafkaSourceExampleTopic(1)))
