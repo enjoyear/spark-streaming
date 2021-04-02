@@ -3,17 +3,15 @@ package com.chen.guo
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{desc, sum}
-import org.slf4j.LoggerFactory
 
-object WordCountDatabricks {
-  val logger = LoggerFactory.getLogger(this.getClass)
+object WordCountDatabricks2 {
   val outputPath = "/tmp/chenguo/test2"
 
   def main(args: Array[String]): Unit = {
-    logger.info("Job starts")
+    println("Job starts-v1")
 
     for (arg <- args) {
-      logger.info(s"Received arg: ${arg}")
+      println(s"Got arg: ${arg}")
     }
 
     val spark = SparkSession
@@ -24,7 +22,7 @@ object WordCountDatabricks {
 
     val df = spark.table("chen_guo.diamonds")
     df.write.mode("overwrite").json(outputPath)
-    logger.info(s"Overwrite output ${outputPath}")
+    println(s"Overwrite output ${outputPath}")
 
 
     //Word Count Example
@@ -39,7 +37,7 @@ object WordCountDatabricks {
       .orderBy(desc("count"))
       .limit(5)
       .collect()
-      .foreach(x => logger.info(x.toString()))
+      .foreach(println(_))
   }
 }
 
