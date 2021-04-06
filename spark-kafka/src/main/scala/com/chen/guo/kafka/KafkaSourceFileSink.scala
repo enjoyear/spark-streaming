@@ -1,7 +1,6 @@
-package com.chen.guo.kafka.dev
+package com.chen.guo.kafka
 
 import com.chen.guo.constant.Constant
-import com.chen.guo.kafka.KafkaSourceConsoleSink
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
