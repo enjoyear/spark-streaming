@@ -2,6 +2,7 @@ package com.chen.guo
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
@@ -63,7 +64,7 @@ object DStreamKafka extends App {
 
   val batchesToRun = 10 // How many batches to run before terminating
   messages.foreachRDD {
-    rdd =>
+    rdd: RDD[Message] =>
       val finishedBatchesCounter = FinishedBatchesCounter.getInstance(sc)
       println(s"--- Batch ${finishedBatchesCounter.count + 1} ---")
       println("Processed messages in this batch: " + rdd.count())
