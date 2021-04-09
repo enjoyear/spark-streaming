@@ -11,7 +11,6 @@ import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.util.LongAccumulator
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -103,22 +102,3 @@ object DStreamKafkaV2 extends App {
   ssc.start()
   ssc.awaitTermination()
 }
-
-// Counter for the number of batches. The job will stop after it reaches 'batchesToRun' value
-// Looks ugly, but this is what documentation uses as an example ¯\_(ツ)_/¯
-object FinishedBatchesCounter {
-  @volatile private var instance: LongAccumulator = null
-
-  def getInstance(sc: SparkContext): LongAccumulator = {
-    if (instance == null) {
-      synchronized {
-        if (instance == null) {
-          instance = sc.longAccumulator("FinishedBatchesCounter")
-        }
-      }
-    }
-    instance
-  }
-}
-
-case class Message(platform: String, uid: String, key: String, value: String)

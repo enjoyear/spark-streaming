@@ -14,12 +14,14 @@ object KafkaIngest {
   val outputPathRoot = s"dbfs:/tmp/chenguo/kafka/${topicName}"
 
   def main(args: Array[String]): Unit = {
+    println("KafkaIngest starting...")
     val spark = SparkSession
       .builder
       .master("local[2]")
       .appName(appName)
       .config("spark.sql.streaming.kafka.useDeprecatedOffsetFetching", false)
       .getOrCreate()
+    println("Created Spark Context")
 
     val df: DataFrame = spark
       .readStream

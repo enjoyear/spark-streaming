@@ -76,7 +76,7 @@ object DStreamKafka extends App {
       }
   }
 
-  messages.map(msg => (msg.platform, 1))
+  messages.map((msg: Message) => (msg.platform, 1))
     .reduceByKey(_ + _) //use reduceByKey, avoid GroupByKey: https://databricks.gitbooks.io/databricks-spark-knowledge-base/content/best_practices/prefer_reducebykey_over_groupbykey.html
     .print()
 

@@ -1,7 +1,8 @@
 package com.chen.guo.constant
 
 object Constant {
-  val CheckpointLocation = s"file:///Users/chguo/Downloads/kafka-ingest/checkpoint"
-  val OutputPath = s"file:///Users/chguo/Downloads/kafka-ingest/ingested"
-  val CSVSampleFiles = s"file://${System.getProperty("user.home")}/repo/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleCSV/*"
+  val homeDir: String = System.getProperty("user.home")
+  val CheckpointLocation = s"file://${homeDir}/Downloads/kafka-ingest/checkpoint"
+  val OutputPath = s"file://${homeDir}/Downloads/kafka-ingest/ingested"
+  val CSVSampleFiles = s"file://${homeDir}/repo/enjoyear/spark-streaming/spark-kafka/src/main/resources/SampleCSV/*"
 }
