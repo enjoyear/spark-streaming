@@ -28,7 +28,7 @@ object DStreamKafkaV2 extends App {
   val groupId = s"stream-checker-v${r.nextInt.toString}"
 
   val kafkaParams = Map[String, Object](
-    "bootstrap.servers" -> "kafka:9092",
+    "bootstrap.servers" -> "localhost:9092",
     "key.deserializer" -> classOf[StringDeserializer],
     "value.deserializer" -> classOf[StringDeserializer],
     "group.id" -> groupId,

@@ -28,7 +28,7 @@ object DStreamKafka extends App {
   val groupId = s"stream-checker-v${r.nextInt.toString}"
 
   val kafkaParams = Map[String, Object](
-    "bootstrap.servers" -> "kafka:9092",
+    "bootstrap.servers" -> "localhost:9092",
     "key.deserializer" -> classOf[StringDeserializer],
     "value.deserializer" -> classOf[StringDeserializer],
     "group.id" -> groupId,
@@ -92,7 +92,7 @@ object DStreamKafka extends App {
 }
 
 // Counter for the number of batches. The job will stop after it reaches 'batchesToRun' value
-// Looks ugly, but this is what documentation uses as an example ¯\_(ツ)_/¯
+// Looks ugly, but this is what documentation uses as an example
 object FinishedBatchesCounter {
   @volatile private var instance: LongAccumulator = null
 
