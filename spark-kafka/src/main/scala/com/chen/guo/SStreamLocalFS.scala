@@ -47,7 +47,7 @@ object SStreamLocalFS extends App {
       * More options can be found here:
       * https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#input-sources
       */
-    .option("sep", ";")
+    .option("sep", ",")
     .schema(schema)
 
     /**
