@@ -1,5 +1,6 @@
 package com.chen.guo
 
+import com.chen.guo.constant.Constant
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.rdd.RDD
@@ -13,7 +14,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import scala.util.parsing.json.JSON
 
 /**
-  * Referenced https://www.qubole.com/blog/dstreams-vs-dataframes-two-flavors-of-spark-streaming/
+  * See set up at [[com.chen.guo.kafka.KafkaSourceFileSink]]
   */
 object DStreamKafka2 extends App {
   val conf = new SparkConf()
@@ -23,6 +24,7 @@ object DStreamKafka2 extends App {
   sc.setLogLevel("WARN")
   val topics = Array("example-topic")
   val ssc = new StreamingContext(sc, Seconds(5))
+  ssc.checkpoint(Constant.CheckpointLocation + "/DStreamKafka2")
 
   val groupId = s"stream-checker-v${scala.util.Random.nextInt.toString}"
 
