@@ -1,16 +1,18 @@
 package com.chen.guo.kafka.dev
 
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.spark.sql.streaming._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 object KafkaIngest {
   val appName = "KafkaIngest"
   val queryNamePrefix = "kfkingest"
-  val consumerGroup = "dp-spkkfk-ingest"
+  val consumerGroupPrefix = "dp-spark-ingest"
 
+  val bootstrapServers = ""
   val topicName = "data-analytics-service-events"
   val topicPartition = 30
-  val kafkaSourceExampleTopic: Array[String] = Array(consumerGroup, topicName, s"${OffsetStringGenerator.fromEarliest(topicName, topicPartition)}")
+  val kafkaSourceExampleTopic: Array[String] = Array(consumerGroupPrefix, topicName, s"${OffsetStringGenerator.fromEarliest(topicName, topicPartition)}")
   val outputPathRoot = s"dbfs:/tmp/chenguo/kafka/${topicName}"
 
   def main(args: Array[String]): Unit = {
@@ -26,10 +28,27 @@ object KafkaIngest {
     val df: DataFrame = spark
       .readStream
       .format("kafka")
-      .option("kafka.bootstrap.servers", "localhost:9092")
+      .option("kafka.bootstrap.servers", bootstrapServers)
       .option("groupIdPrefix", kafkaSourceExampleTopic(0))
       .option("subscribe", kafkaSourceExampleTopic(1))
       .option("startingOffsets", kafkaSourceExampleTopic(2))
+      //.option("spark.executor.extraJavaOptions", "-Djava.security.auth.login.config=jaas.conf")
+      //.option("kafka.security.protocol", "SASL_SSL")
+      .option(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL")
+
+      //      .option("ssl.truststore.location", "dbfs:/FileStore/kafkaCredentials/truststore.jks")
+      //      .option("ssl.truststore.password", "changeit")
+      //      .option("ssl.truststore.type", "JKS")
+      .option("ssl.truststore.location", "dbfs:/FileStore/kafkaCredentials/connect.truststore.jks")
+
+      //      .option("ssl.keystore.location", "dbfs:/FileStore/kafkaCredentials/pkcs.p12")
+      //      .option("ssl.keystore.password", "PKCS12Password")
+      //      .option("ssl.keystore.type", "PKCS12")
+      .option("ssl.keystore.location", "dbfs:/FileStore/kafkaCredentials/connect.jks")
+      .option("ssl.keystore.password", "keystore_pass")
+
+      //      .option("ssl.key.password", "work_around_jdk-6879539")
+      .option("ssl.key.password", "keystore_pass")
       .option("includeHeaders", "true")
       .load()
 
