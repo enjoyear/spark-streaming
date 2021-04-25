@@ -32,6 +32,7 @@ broker.id=0
 
 ## It would also work if 0.0.0.0 is changed to the private IP 10.1.0.94, but not 127.0.0.1
 ## Listener names must be identical across all brokers
+## Each listener also must have a different port
 listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:4000
 inter.broker.listener.name=INTERNAL
 
@@ -107,12 +108,15 @@ bin/kafka-console-consumer.sh --topic quickstart-events --bootstrap-server local
 ```bash
 export Broker0=ec2-54-162-247-190.compute-1.amazonaws.com
 export Broker1=ec2-54-162-193-150.compute-1.amazonaws.com
+export InternalPort=9092
 export Broker0ExternalPort=4000
 export Broker1ExternalPort=4001
 
 # Test connection
 telnet ${Broker0} ${Broker0ExternalPort}
+telnet ${Broker0} ${InternalPort}
 telnet ${Broker1} ${Broker1ExternalPort}
+telnet ${Broker1} ${InternalPort}
 
 ## -L: see the metadata for the listener to which you connected.
 ## Note that
@@ -124,6 +128,11 @@ telnet ${Broker1} ${Broker1ExternalPort}
 ## When you try to get the metadata using port 4001, you will only see the brokers with EXTERNAL2 declared
 kafkacat -b ${Broker0}:${Broker0ExternalPort} -L ## You will see the advertised hostname-port returned
 kafkacat -b ${Broker1}:${Broker1ExternalPort} -L ## You will see the advertised hostname-port returned
+
+## If you use the internal port, the internal listeners will be returned
+## So kafka response by matching port numbers
+kafkacat -b ${Broker0}:${InternalPort} -L
+kafkacat -b ${Broker1}:${InternalPort} -L
 ```
 
 #### Example of bootstrapping with broker0 EXTERNAL port
@@ -145,8 +154,8 @@ kafkacat -b ${Broker1}:${Broker1ExternalPort} -L -C -t quickstart-events
 kafkacat -b ${Broker0}:${Broker0ExternalPort},${Broker1}:${Broker1ExternalPort} -L -C -t quickstart-events
 
 ## Consume using the INTERNAL listeners won't work
-kafkacat -b ${Broker0}:9092 -L -C -t quickstart-events ## This won't work
-kafkacat -b ${Broker1}:9092 -L -C -t quickstart-events ## This won't work
+kafkacat -b ${Broker0}:${InternalPort} -L -C -t quickstart-events ## This won't work
+kafkacat -b ${Broker1}:${InternalPort} -L -C -t quickstart-events ## This won't work
 ```
 
 
