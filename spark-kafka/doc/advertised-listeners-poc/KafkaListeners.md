@@ -1,7 +1,7 @@
 # Setup Kafka Listeners for External and Internal clients
 
 Start EC2 instances in a subnet with security group like below
-![image](Kafka subnet security group.png)
+![image](images/Kafka%20subnet%20security%20group.png)
 
 Follow the steps below to set up a Kafka cluster with two brokers(broker-0 and broker-1)
 
