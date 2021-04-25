@@ -23,11 +23,11 @@ cd kafka_2.13-2.8.0
 bin/zookeeper-server-start.sh config/zookeeper.properties
 ```
 
-3. Start another terminal to start Kafka broker-0
+3. Start a terminal to start Kafka broker-0
 
 Apply the settings below in config/server.properties for broker-0 
 ```bash
-# No change needed 
+## No changes needed 
 broker.id=0
 
 ## It would also work if 0.0.0.0 is changed to the private IP 10.1.0.94, but not 127.0.0.1
@@ -39,9 +39,9 @@ inter.broker.listener.name=INTERNAL
 ## If internal is INTERNAL://abc:9092, the host name abc will be returned if client connects through 9092
 ## If external is EXTERNAL://xyz:4000, the host name xyz will be returned if client connects through 4000
 
-# Alternatively INTERNAL://ip-10-1-0-94.ec2.internal:9092 can be used, in this case
-# - ip-10-1-0-94.ec2.internal is the broker-0's hostname
-# - An A-Record for ip-10-1-0-94.ec2.internal to 10.1.0.94 needs to be added in the DNS
+## Alternatively INTERNAL://ip-10-1-0-94.ec2.internal:9092 can be used, in this case
+## - ip-10-1-0-94.ec2.internal is the broker-0's hostname
+## - An A-Record for ip-10-1-0-94.ec2.internal to 10.1.0.94 needs to be added in the DNS
 advertised.listeners=INTERNAL://10.1.0.94:9092,EXTERNAL://ec2-54-162-247-190.compute-1.amazonaws.com:4000
 listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 
@@ -52,8 +52,9 @@ zookeeper.connect=localhost:2181
 bin/kafka-server-start.sh config/server.properties
 ```
 
-4. Start another terminal to start Kafka broker-1
+4. Start a terminal to start Kafka broker-1
 
+Apply the settings below in config/server.properties for broker-1
 ```bash
 # Use a different broker id
 broker.id=1
@@ -69,7 +70,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 zookeeper.connect=10.1.0.94:2181
 ```
 
-5. Start another terminal to start a producer
+5. Start a terminal to start a producer on broker-0
 ```bash
 ## SSH into broker0
 
@@ -87,7 +88,7 @@ bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server local
 # echo 'a b cd' | kafkacat -P -b localhost:9092 -t quickstart-events
 ```
 
-6. Start another terminal to start a consumer on EC2
+6. Start a terminal to start a consumer on broker-1
 ```bash
 ## SSH into broker1
 
@@ -95,7 +96,7 @@ bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server local
 bin/kafka-console-consumer.sh --topic quickstart-events --bootstrap-server localhost:9092 \
 --from-beginning
 
-# Consume using the external port
+# Alternatively, you can consume using the external port
 bin/kafka-console-consumer.sh --topic quickstart-events --bootstrap-server localhost:4001 \
 --from-beginning
 ```
@@ -115,8 +116,8 @@ telnet ${Broker1} ${Broker1ExternalPort}
 
 ## -L: see the metadata for the listener to which you connected.
 ## Note that
-## - 9092 will response with internal hostname
-## - 4000 and 4001 will response with external hostname
+## - 9092 will response with INTERNAL hostname
+## - 4000 and 4001 will response with EXTERNAL hostname
 ## Listener names must be identical across all brokers, otherwise you will get a partial list of the brokers
 ## For example, in broker0 you declared listener EXTERNAL and in broker1 you declared listener EXTERNAL2
 ## When you try to get the metadata using port 4000, you will only see the brokers with EXTERNAL declared
@@ -138,8 +139,14 @@ kafkacat -b ${Broker1}:${Broker1ExternalPort} -L ## You will see the advertised 
 ### Consume locally
 ```bash
 ## The data consumed will be partial if listener names are not identical across all brokers
+## You can change EXTERNAL to EXTERNAL2 in broker-1, then see the different results when running the two commands below
 kafkacat -b ${Broker0}:${Broker0ExternalPort} -L -C -t quickstart-events
 kafkacat -b ${Broker1}:${Broker1ExternalPort} -L -C -t quickstart-events
+kafkacat -b ${Broker0}:${Broker0ExternalPort},${Broker1}:${Broker1ExternalPort} -L -C -t quickstart-events
+
+## Consume using the INTERNAL listeners won't work
+kafkacat -b ${Broker0}:9092 -L -C -t quickstart-events ## This won't work
+kafkacat -b ${Broker1}:9092 -L -C -t quickstart-events ## This won't work
 ```
 
 

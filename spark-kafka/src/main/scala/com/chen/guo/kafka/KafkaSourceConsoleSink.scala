@@ -38,6 +38,7 @@ object KafkaSourceConsoleSink extends App {
   val df = spark
     .readStream
     .format("kafka")
+    //.option("kafka.bootstrap.servers", "ec2-54-162-247-190.compute-1.amazonaws.com:4000")
     .option("kafka.bootstrap.servers", "localhost:9092")
     .option("subscribe", topicName)
     //start consuming from the earliest. By default it will be the latest, which is to discard all history
