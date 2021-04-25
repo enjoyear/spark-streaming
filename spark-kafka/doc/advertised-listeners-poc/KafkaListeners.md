@@ -3,25 +3,22 @@
 Start an EC2 instance and whitelist TCP ports used below, e.g. 9092 and 4001
 
 Follow the steps below for the setup
+### On EC2
+1. Download and install packages
 ```bash
-## Execute on EC2
 yes y | sudo yum install wget
 yes y | sudo yum install java-11-openjdk-devel
-yes y | sudo yum install scala
+# yes y | sudo yum install scala
 wget https://downloads.apache.org/kafka/2.8.0/kafka_2.13-2.8.0.tgz
 tar -xvf kafka_2.13-2.8.0.tgz
 cd kafka_2.13-2.8.0
+# start the zookeeper
 bin/zookeeper-server-start.sh config/zookeeper.properties
-bin/kafka-server-start.sh config/server.properties
-bin/kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092
-# Produce messages
-# localhost can be replaced with private ip
-bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server localhost:9092
-echo 'a b cd' | kafkacat -P -b localhost:9092 -t quickstart-events
+```
 
-
-
-## apply the settings below to config/server.properties
+2. Start another terminal to start the broker 
+```bash
+## apply the settings below in config/server.properties
 ## It would also work if 0.0.0.0 is changed to the private IP 10.1.0.94, but not 127.0.0.1
 listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:4001
 inter.broker.listener.name=INTERNAL
@@ -31,18 +28,37 @@ inter.broker.listener.name=INTERNAL
 advertised.listeners=INTERNAL://ip-10-1-0-94.ec2.internal:9092,EXTERNAL://ec2-3-91-72-157.compute-1.amazonaws.com:4001
 listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 
+# start the broker
+bin/kafka-server-start.sh config/server.properties
+```
 
+3. Start another terminal to start a producer
+```bash
+# Create the topic
+bin/kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092
+# Produce messages
+# localhost can be replaced with private ip
+bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server localhost:9092
+# Option 2
+# echo 'a b cd' | kafkacat -P -b localhost:9092 -t quickstart-events
+```
 
+### On your local machine
+Start a Kafka consumer or Spark cluster
+```bash
 ## Execute locally
 export EC2HostName=ec2-3-91-72-157.compute-1.amazonaws.com
 export EC2KafkaPort=4001
+
 # Test connection
 telnet ${EC2HostName} ${EC2KafkaPort}
+
 ## -L: see the metadata for the listener to which you connected.
 ## Note that
 ## - 9092 will response with internal hostname
 ## - 4001 will response with external hostname
-kafkacat -b ${EC2HostName}:${EC2KafkaPort} -L ## You will see the advertised hostname-port returned 
+kafkacat -b ${EC2HostName}:${EC2KafkaPort} -L ## You will see the advertised hostname-port returned
+ 
 #Consume
 kafkacat -b ${EC2HostName}:${EC2KafkaPort} -L -C -t quickstart-events
 ```
