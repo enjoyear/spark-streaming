@@ -30,20 +30,32 @@ Apply the settings below in config/server.properties for broker-0
 ## No changes needed 
 broker.id=0
 
+## Listeners are the interfaces that Kafka binds/listens to and can handle traffic on those ports. For the bootstrap
+## connection, the advertised listener of the SAME name will be advertised to the client. This advertised listener can
+## be leveraged to change the hostname or port. When a listener is not advertised, current broker won't be consumable if
+## a client tries to consume/produce using such listener. For example, if you define an external listener with 
+## 0.0.0.0:9900 and a corresponding advertised listener with hostname:4000, your bootstrap connection needs to go through
+## 9000 but later traffic will go through 4000. Either use a load balancer to change the traffic from 4000 back to 9000,
+## or define a new listener, without an advertised listener, listening at 0.0.0.0:4000.
+## If not use a load balancer, setup for this scenario will be like
+### listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9900,EXTERNAL2://0.0.0.0:4000
+### inter.broker.listener.name=INTERNAL
+### advertised.listeners=INTERNAL://10.1.0.94:9092,EXTERNAL://ec2-54-87-254-253.compute-1.amazonaws.com:4000
+### listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,EXTERNAL2:PLAINTEXT
+## Constrains:
+## * Listener names must be identical across all brokers
+## * Each listener also must have a different port
 ## It would also work if 0.0.0.0 is changed to the private IP 10.1.0.94, but not 127.0.0.1
-## Listener names must be identical across all brokers
-## Each listener also must have a different port
 listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:4000
 inter.broker.listener.name=INTERNAL
 
-## The port number is used by Kafka to match and tell which advertised listener should be returned as a response
-## If internal is INTERNAL://abc:9092, the host name abc will be returned if client connects through 9092
-## If external is EXTERNAL://xyz:4000, the host name xyz will be returned if client connects through 4000
+## Advertised listeners are how clients can connect
+## The matching between listener and advertised listener is done through the listner name
 
-## Alternatively INTERNAL://ip-10-1-0-94.ec2.internal:9092 can be used, in this case
+## An alternative way to the INTERNAL listener below is INTERNAL://ip-10-1-0-94.ec2.internal:9092, in this case
 ## - ip-10-1-0-94.ec2.internal is the broker-0's hostname
 ## - An A-Record for ip-10-1-0-94.ec2.internal to 10.1.0.94 needs to be added in the DNS
-advertised.listeners=INTERNAL://10.1.0.94:9092,EXTERNAL://ec2-54-162-247-190.compute-1.amazonaws.com:4000
+advertised.listeners=INTERNAL://10.1.0.94:9092,EXTERNAL://ec2-54-87-254-253.compute-1.amazonaws.com:4000
 listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 
 # Connect to the zookeeper running locally
@@ -64,7 +76,7 @@ broker.id=1
 ## Listener names must be identical across all brokers
 listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:4001
 inter.broker.listener.name=INTERNAL
-advertised.listeners=INTERNAL://10.1.0.76:9092,EXTERNAL://ec2-54-162-193-150.compute-1.amazonaws.com:4001
+advertised.listeners=INTERNAL://10.1.0.76:9092,EXTERNAL://ec2-54-173-92-245.compute-1.amazonaws.com:4001
 listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 
 # Connect to the zookeeper running on broker-0
@@ -106,8 +118,8 @@ bin/kafka-console-consumer.sh --topic quickstart-events --bootstrap-server local
 
 ### Check the listener metadata
 ```bash
-export Broker0=ec2-54-162-247-190.compute-1.amazonaws.com
-export Broker1=ec2-54-162-193-150.compute-1.amazonaws.com
+export Broker0=ec2-54-87-254-253.compute-1.amazonaws.com
+export Broker1=ec2-54-173-92-245.compute-1.amazonaws.com
 export InternalPort=9092
 export Broker0ExternalPort=4000
 export Broker1ExternalPort=4001
