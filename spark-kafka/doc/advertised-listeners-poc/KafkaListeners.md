@@ -170,6 +170,10 @@ kafkacat -b ${Broker0}:${InternalPort} -L -C -t quickstart-events ## This won't 
 kafkacat -b ${Broker1}:${InternalPort} -L -C -t quickstart-events ## This won't work
 ```
 
+## Other commands
+```bash
+./zookeeper-shell.sh ${Broker0}:2181 get /brokers/ids/0
+```
 
 ## References
 - https://aws.amazon.com/blogs/big-data/how-goldman-sachs-builds-cross-account-connectivity-to-their-amazon-msk-clusters-with-aws-privatelink/
