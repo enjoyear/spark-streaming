@@ -173,6 +173,27 @@ kafkacat -b ${Broker1}:${InternalPort} -L -C -t quickstart-events ## This won't 
 ## Other commands
 ```bash
 ./zookeeper-shell.sh ${Broker0}:2181 get /brokers/ids/0
+
+## For MSK, get zookeeper node through
+aws kafka describe-cluster --cluster-arn <>
+
+## Customize MSK listeners
+./kafka-configs.sh \
+  --bootstrap-server "b-1.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:9092" \
+  --alter \
+  --entity-type brokers \
+  --entity-name 1 \
+  --add-config listeners=[CLIENT://0.0.0.0:9092,CLIENT_SECURE://0.0.0.0:9094,REPLICATION://0.0.0.0:9093,REPLICATION_SECURE://0.0.0.0:9095,EXTERNAL://0.0.0.0:9098],listener.security.protocol.map=[CLIENT:PLAINTEXT,CLIENT_SECURE:SSL,REPLICATION:PLAINTEXT,REPLICATION_SECURE:SSL,EXTERNAL:PLAINTEXT],advertised.listeners=[CLIENT://b-1.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:9092,CLIENT_SECURE://b-1.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:9094,REPLICATION://b-1-internal.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:9093,REPLICATION_SECURE://b-1-internal.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:9095,EXTERNAL://b-1-internal.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:4000]
+
+## Read MSK customization
+./kafka-configs.sh \
+  --bootstrap-server "b-1.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:9092" \
+  --describe \
+  --entity-type brokers \
+  --entity-name 1
+  
+./zookeeper-shell.sh z-1.chen-guo-msk.hcao8v.c6.kafka.us-east-1.amazonaws.com:2181 get /brokers/ids/1
+
 ```
 
 ## References
