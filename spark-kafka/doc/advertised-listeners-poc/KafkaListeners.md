@@ -200,4 +200,5 @@ aws kafka describe-cluster --cluster-arn <>
 - https://aws.amazon.com/blogs/big-data/how-goldman-sachs-builds-cross-account-connectivity-to-their-amazon-msk-clusters-with-aws-privatelink/
 - https://rmoff.net/2018/08/02/kafka-listeners-explained/
 - https://cwiki.apache.org/confluence/display/KAFKA/KIP-103%3A+Separation+of+Internal+and+External+traffic
+- https://medium.com/@stephane.maarek/introduction-to-apache-kafka-security-c8951d410adf
 
