@@ -11,8 +11,18 @@ func main() {
 	for {
 		port++
 		fmt.Printf("Port is %v\n", port)
-		l, _ := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
-		conn, _ := l.Accept()
+		listenAddress := fmt.Sprintf("localhost:%d", port)
+		l, err := net.Listen("tcp", listenAddress)
+		if err != nil {
+			fmt.Printf("Error in listening on %v: %v\n", listenAddress, err)
+			return
+		}
+
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Printf("Error in accepting on %v: %v\n", listenAddress, err)
+			l.Close()
+		}
 		tcpConn := conn.(*net.TCPConn)
 		fmt.Printf("%s\n", tcpConn)
 		fmt.Printf("Local Address: %s\n", tcpConn.LocalAddr())
