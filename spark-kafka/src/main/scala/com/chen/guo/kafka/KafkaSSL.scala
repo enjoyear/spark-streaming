@@ -4,8 +4,6 @@ import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.apache.spark.sql.{Dataset, SparkSession}
 
 object KafkaSSL extends App {
-
-  val devCluster = "mskDev"
   val spark = SparkSession
     .builder
     .master("local[2]")
