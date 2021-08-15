@@ -22,7 +22,7 @@ object KafkaSSL extends App {
 
   val df = spark.readStream
     .format("kafka")
-    .option("kafka.bootstrap.servers", "b-1.dataplatformkafka.i1ndju.c12.kafka.us-east-1.amazonaws.com:9094")
+    .option("kafka.bootstrap.servers", System.getenv("broker"))
     .withMTlsOptions()
     .option("subscribe", topicName)
     //start consuming from the earliest. By default it will be the latest, which is to discard all history
