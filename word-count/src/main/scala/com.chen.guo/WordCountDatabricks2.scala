@@ -4,15 +4,24 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{desc, sum}
 
+import java.io.File
+
 object WordCountDatabricks2 {
   val outputPath = "/tmp/chenguo/test2"
 
   def main(args: Array[String]): Unit = {
-    println("Job starts-v1")
+    println("Job starts-v2")
 
     for (arg <- args) {
       println(s"Got arg: ${arg}")
     }
+    println(s"Home directory is ${System.getenv("HOME")}")
+    listLocalFs("/")
+    listLocalFs("/home")
+    listLocalFs("/usr")
+    listLocalFs("/dbfs")
+    listLocalFs("/mnt")
+    listLocalFs("/databricks")
 
     val spark = SparkSession
       .builder
@@ -38,6 +47,12 @@ object WordCountDatabricks2 {
       .limit(5)
       .collect()
       .foreach(println(_))
+  }
+
+  private def listLocalFs(pathToInspect: String): Unit = {
+    val d = new File(pathToInspect)
+    println(s"Listing files on the local file system for ${pathToInspect}")
+    d.listFiles.foreach(println(_))
   }
 }
 
