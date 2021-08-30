@@ -4,8 +4,9 @@ import argparse
 import json
 from multiprocessing import Process
 
-from bootstrap_servers import *
 from confluent_kafka import Consumer, TopicPartition
+
+from bootstrap_servers import *
 
 
 class KafkaConsumerAssign(KafkaClientBase):
@@ -16,7 +17,8 @@ class KafkaConsumerAssign(KafkaClientBase):
         config = {
             'bootstrap.servers': f"{self._bootstrap_servers}",
             'group.id': f"{self._consumer_group}",
-            # 'auto.offset.reset': 'earliest',
+            # doc here: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+            'auto.offset.reset': 'error',
         }
         consumer_config = {**config, **self._ssl_config}
         print(f"Using consumer config:\n{json.dumps(consumer_config, sort_keys=True, indent=2)}")
