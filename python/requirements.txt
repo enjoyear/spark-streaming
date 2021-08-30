@@ -1,2 +1,3 @@
 -- pip install -r requirements.txt
 boto3==1.10.50
+confluent_kafka==1.7.0

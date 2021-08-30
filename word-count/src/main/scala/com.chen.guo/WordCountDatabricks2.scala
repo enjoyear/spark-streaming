@@ -15,6 +15,10 @@ object WordCountDatabricks2 {
     for (arg <- args) {
       println(s"Got arg: ${arg}")
     }
+    val testDataBucket = args(0)
+    val testDataKey = args(1)
+    println(s"Bucket name: ${testDataBucket}")
+    println(s"S3 key name: ${testDataKey}")
     println(s"Home directory is ${System.getenv("HOME")}")
     listLocalFs("/")
     listLocalFs("/home")
@@ -35,7 +39,7 @@ object WordCountDatabricks2 {
 
 
     //Word Count Example
-    val logData: RDD[String] = spark.sparkContext.textFile("s3a://cb-databricks-logs-development/0326-210651-davit416/driver/log4j-active.log")
+    val logData: RDD[String] = spark.sparkContext.textFile(s"s3a://$testDataBucket/$testDataKey")
     val splitdata = logData.flatMap(line => line.split(" "));
 
     import spark.implicits._
