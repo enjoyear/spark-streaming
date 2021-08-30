@@ -1,7 +1,11 @@
 #!/usr/bin/env python3.7
 
 import argparse
+import datetime
 import json
+import random
+import sys
+import time
 from multiprocessing import Process
 
 from confluent_kafka import Consumer
