@@ -8,10 +8,10 @@ from bootstrap_servers import *
 from confluent_kafka import Consumer, TopicPartition
 
 
-class KafkaConsumer(KafkaClientBase):
+class KafkaConsumerAssign(KafkaClientBase):
 
     def __init__(self, bootstrap_servers: str, consumer_group_id: str, cert_path: str, key_password: str):
-        super(KafkaConsumer, self).__init__(bootstrap_servers, cert_path, key_password)
+        super(KafkaConsumerAssign, self).__init__(bootstrap_servers, cert_path, key_password)
         self._consumer_group = f"kss_test_group_{consumer_group_id}"
         config = {
             'bootstrap.servers': f"{self._bootstrap_servers}",
@@ -47,7 +47,7 @@ class KafkaConsumer(KafkaClientBase):
                       f"{msg.topic()}-{msg.partition()}-{msg.offset()}: {msg.key()}->{msg_value}")
 
 
-class KafkaConsumerWrapper:
+class KafkaConsumerAssignWrapper:
     def __init__(self, bootstrap_servers: str, consumer_group_id: str, cert_path: str, key_password: str):
         self._bootstrap_servers = bootstrap_servers
         self._consumer_group_id = consumer_group_id
@@ -55,12 +55,13 @@ class KafkaConsumerWrapper:
         self._key_password = key_password
 
     def start(self, topic):
-        KafkaConsumer(self._bootstrap_servers, self._consumer_group_id, self._cert_path, self._key_password).consume(
+        KafkaConsumerAssign(self._bootstrap_servers, self._consumer_group_id, self._cert_path,
+                            self._key_password).consume(
             topic)
 
 
 def main(bootstrap_servers, group_id, cert_path, key_password):
-    consumer = KafkaConsumerWrapper(bootstrap_servers, group_id, cert_path, key_password)
+    consumer = KafkaConsumerAssignWrapper(bootstrap_servers, group_id, cert_path, key_password)
     jobs = []
     jobs.append(Process(target=consumer.start, args=("AnotherTestTopic",)))
 
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     """
     Example: 
     conda activate airflow
-    ./kafka_consumer.py --bootstrap-servers xxx.kafka.us-east-1.amazonaws.com:9094 \
+    ./kafka_consumer_assign.py --bootstrap-servers xxx.kafka.us-east-1.amazonaws.com:9094 \
         --group-id 1 --cert-path /tmp/kafka-local-credentials --key-password password
     """
     parser = argparse.ArgumentParser(description='Run the Kafka consumer')
