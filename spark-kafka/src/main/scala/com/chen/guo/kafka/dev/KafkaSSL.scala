@@ -7,7 +7,7 @@ import com.databricks.dbutils_v1.DBUtilsHolder.dbutils
 object KafkaSSL extends App {
   val spark = SparkSession
     .builder
-    .master("local[3]")
+    .master("local[2]")
     .appName("KafkaSSL")
     .getOrCreate()
 
@@ -25,9 +25,8 @@ object KafkaSSL extends App {
   val keyPassword = args(4)
   val topicName = args(5)
 
-  import java.io.File
-
-  new File("/").listFiles.foreach(println(_))
+  // import java.io.File
+  //  new File("/").listFiles.foreach(println(_))
 
   /**
     * dbutils.fs.cp("dbfs:/FileStore/kafkaCredentials/truststore.jks", "/tmp/chenguo/truststore.jks")         -> save to S3 /tmp/chenguo
@@ -41,12 +40,12 @@ object KafkaSSL extends App {
     * .option(s"kafka.ssl.truststore.location", "/tmp/chenguo/truststore.jks")                -> NoSuchFileException: /tmp/chenguo/truststore.jks
     * .option(s"kafka.ssl.truststore.location", "file:///tmp/chenguo/truststore.jks")         -> NoSuchFileException: file:/tmp/chenguo/truststore.jks
     */
-  dbutils.fs.cp("dbfs:/FileStore/kafkaCredentials/truststore.jks", trustStoreLocation)
-  dbutils.fs.cp("dbfs:/FileStore/kafkaCredentials/keystore.jks", keyStoreLocation)
-
+  //  dbutils.fs.cp("dbfs:/FileStore/kafkaCredentials/truststore.jks", trustStoreLocation)
+  //  dbutils.fs.cp("dbfs:/FileStore/kafkaCredentials/keystore.jks", keyStoreLocation)
 
   import spark.implicits._
 
+  println(s"Constructing the spark readStream ...")
   val df = spark.readStream
     .format("kafka")
     .option("kafka.bootstrap.servers", broker)
