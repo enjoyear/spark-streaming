@@ -7,7 +7,7 @@ import com.databricks.dbutils_v1.DBUtilsHolder.dbutils
 object KafkaSSL extends App {
   val spark = SparkSession
     .builder
-    .master("local[2]")
+    .master("local[3]")
     .appName("KafkaSSL")
     .getOrCreate()
 
