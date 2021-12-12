@@ -57,7 +57,8 @@ In fact, each of the "part-xxxxx-" file is mapped to a Spark task for current mi
 When the output needs to be partitioned, a "part-xxxxx-" file needs to be further split into more granular pieces.
 
 
-
+# Reference
+* https://www.waitingforcode.com/apache-spark-structured-streaming/checkpoint-storage-structured-streaming/read
 
 
 
