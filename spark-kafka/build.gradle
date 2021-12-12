@@ -2,4 +2,5 @@ dependencies {
     //this is just an API. Find the dbutils at com.databricks.dbutils_v1.DBUtilsV1
     compile "com.databricks:dbutils-api_2.12:0.0.5"
     compile 'org.postgresql:postgresql:42.3.1'
+    compile group: 'org.apache.datasketches', name: 'datasketches-java', version: '3.0.0'
 }
