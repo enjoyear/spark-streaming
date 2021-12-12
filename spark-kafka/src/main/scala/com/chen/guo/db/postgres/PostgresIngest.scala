@@ -68,5 +68,6 @@ object PostgresIngest extends App {
     }
   })
 
-  println(s"Unique count: ${sketch.getEstimate}")
+  println(s"Unique count: ${sketch.getEstimate}")  //Accurate is 1097901, Estimate is 1107253.3
+
 }
