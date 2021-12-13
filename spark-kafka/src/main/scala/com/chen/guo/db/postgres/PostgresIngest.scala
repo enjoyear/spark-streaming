@@ -99,6 +99,7 @@ object PostgresIngest extends App {
     connectionProperties.put("user", userName)
     connectionProperties.put("password", password)
     connectionProperties.put("fetchSize", "10000")
+    connectionProperties.put("driver", "org.postgresql.Driver")
 
     val predicates = Array(
       1068001 -> 1068021,
