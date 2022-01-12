@@ -6,12 +6,12 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * A Kafka Connect predicate that checks whether a record's field value is in the configured allowed list
- */
 // Triggering Example:
 //   curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{
 //    "name": "chen-test",
@@ -29,32 +29,40 @@ import java.util.stream.Collectors;
 //      "transforms.filter.negate": true,
 //
 //      "predicates": "fieldAllowedList",
-//      "predicates.fieldAllowedList.type": "dp.kafka.poc.RecordFieldValueAllowList",
+//      "predicates.fieldAllowedList.type": "dp.kafka.poc.RecordFieldValueInList",
 //      "predicates.fieldAllowedList.fieldName": "eventName",
-//      "predicates.fieldAllowedList.allowedList": " e1,Event2, EVENT3 "
+//      "predicates.fieldAllowedList.valueList": " e1,Event2, EVENT3 "
 //    }
 //  }'
 //
 // Note that multiple predicates are not supported by the filter
 // https://github.com/apache/kafka/blob/c182a431d224cb39c0bb43a55199e2d8b4aee1b7/connect/runtime/src/main/java/org/apache/kafka/connect/runtime/PredicatedTransformation.java#L37
 
-public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Predicate<R> {
-    public static final String OVERVIEW_DOC = "A predicate which checks a record's field value is in configured allowed list";
+/**
+ * A Kafka Connect predicate that checks whether a record's field value is in the configured list
+ */
+public class RecordFieldValueInList<R extends ConnectRecord<R>> implements Predicate<R> {
+    public static final String OVERVIEW_DOC = "A predicate which checks a record's field value is in configured list";
 
     private static final String FIELD_NAME_CONFIG = "fieldName";
     private String _fieldName;
 
     private static final String ALLOW_LIST_SPLIT_CHARACTER = ",";
-    private static final String ALLOWED_LIST_CONFIG = "allowedList";
+    private static final String VALUE_LIST_CONFIG = "valueList";
     private Set<String> _allowedList;
+
+    private static final String NULL_IN_LIST_CONFIG = "nullInList";
+    private boolean _nullInList;
 
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(FIELD_NAME_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE,
                     new ConfigDef.NonEmptyString(), ConfigDef.Importance.MEDIUM,
                     "The name of the record's payload field to verify. This name is case sensitive.")
-            .define(ALLOWED_LIST_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE,
+            .define(VALUE_LIST_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE,
                     new ConfigDef.NonEmptyString(), ConfigDef.Importance.MEDIUM,
-                    "The list of allowed values separated by comma for the field. The values are case in-sensitive.");
+                    "The list of allowed values separated by comma for the field. The values are case in-sensitive.")
+            .define(NULL_IN_LIST_CONFIG, ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.LOW,
+                    "Whether the null value will be treated as in the list");
 
     @Override
     public ConfigDef config() {
@@ -73,6 +81,9 @@ public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Pr
 
         HashMap<String, Object> payloadMap = (HashMap<String, Object>) payload;
         Object fieldValue = payloadMap.get(this._fieldName);
+        if (fieldValue == null) {
+            return this._nullInList;
+        }
         if (!(fieldValue instanceof String)) {
             throw new RuntimeException(String.format(
                     "Expect the field %s of record(partition %d, offset %s) payload to be a String type",
@@ -82,7 +93,7 @@ public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Pr
         }
 
         String stringVal = (String) fieldValue;
-        return _allowedList.contains(stringVal);
+        return _allowedList.contains(stringVal.toLowerCase());
     }
 
     @Override
@@ -94,8 +105,9 @@ public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Pr
     public void configure(Map<String, ?> configs) {
         SimpleConfig simpleConfig = new SimpleConfig(config(), configs);
         this._fieldName = simpleConfig.getString(FIELD_NAME_CONFIG);
-        this._allowedList = Arrays.stream(simpleConfig.getString(ALLOWED_LIST_CONFIG).split(ALLOW_LIST_SPLIT_CHARACTER))
+        this._allowedList = Arrays.stream(simpleConfig.getString(VALUE_LIST_CONFIG).split(ALLOW_LIST_SPLIT_CHARACTER))
                 .map(x -> x.trim().toLowerCase()).collect(Collectors.toUnmodifiableSet());
+        this._nullInList = simpleConfig.getBoolean(NULL_IN_LIST_CONFIG);
     }
 
     public static void main(String[] args) {
