@@ -13,7 +13,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 // Triggering Example:
-//   curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{
+//
+// curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{
 //    "name": "chen-test",
 //    "config": {
 //      "connector.class": "FileStreamSink",
@@ -25,15 +26,18 @@ import java.util.stream.Collectors;
 //
 //      "transforms": "filter",
 //      "transforms.filter.type": "org.apache.kafka.connect.transforms.Filter",
-//      "transforms.filter.predicate": "fieldAllowedList",
-//      "transforms.filter.negate": true,
+//      "transforms.filter.predicate": "fieldValDenyList",
 //
-//      "predicates": "fieldAllowedList",
-//      "predicates.fieldAllowedList.type": "dp.kafka.poc.RecordFieldValueInList",
-//      "predicates.fieldAllowedList.fieldName": "eventName",
-//      "predicates.fieldAllowedList.valueList": " e1,Event2, EVENT3 "
+//      "predicates": "fieldValDenyList",
+//      "predicates.fieldValDenyList.type": "dp.kafka.poc.RecordFieldValueInList",
+//      "predicates.fieldValDenyList.fieldName": "eventName",
+//      "predicates.fieldValDenyList.valueList": " e1,Event2, EVENT3 ",
+//      "predicates.fieldValDenyList.nullInList": true
 //    }
 //  }'
+//
+// If you want to convert DenyList into an allowed list, add `"transforms.filter.negate": true` and remove
+// `"predicates.fieldValDenyList.nullInList": true`
 //
 // Note that multiple predicates are not supported by the filter
 // https://github.com/apache/kafka/blob/c182a431d224cb39c0bb43a55199e2d8b4aee1b7/connect/runtime/src/main/java/org/apache/kafka/connect/runtime/PredicatedTransformation.java#L37
