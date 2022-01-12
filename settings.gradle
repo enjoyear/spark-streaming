@@ -1,4 +1,5 @@
 rootProject.name = 'sparkstreaming'
 
+include 'kafka-connect'
 include 'spark-kafka'
 include 'word-count'
