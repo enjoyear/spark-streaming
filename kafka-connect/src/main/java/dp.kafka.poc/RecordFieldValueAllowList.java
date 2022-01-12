@@ -12,6 +12,32 @@ import java.util.stream.Collectors;
 /**
  * A Kafka Connect predicate that checks whether a record's field value is in the configured allowed list
  */
+// Triggering Example:
+//   curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{
+//    "name": "chen-test",
+//    "config": {
+//      "connector.class": "FileStreamSink",
+//      "tasks.max": 1,
+//      "file": "/tmp/test.txt",
+//      "topics": "mytest",
+//      "value.converter.schemas.enable": false,
+//      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+//
+//      "transforms": "filter",
+//      "transforms.filter.type": "org.apache.kafka.connect.transforms.Filter",
+//      "transforms.filter.predicate": "fieldAllowedList",
+//      "transforms.filter.negate": true,
+//
+//      "predicates": "fieldAllowedList",
+//      "predicates.fieldAllowedList.type": "dp.kafka.poc.RecordFieldValueAllowList",
+//      "predicates.fieldAllowedList.fieldName": "eventName",
+//      "predicates.fieldAllowedList.allowedList": " e1,Event2, EVENT3 "
+//    }
+//  }'
+//
+// Note that multiple predicates are not supported by the filter
+// https://github.com/apache/kafka/blob/c182a431d224cb39c0bb43a55199e2d8b4aee1b7/connect/runtime/src/main/java/org/apache/kafka/connect/runtime/PredicatedTransformation.java#L37
+
 public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Predicate<R> {
     public static final String OVERVIEW_DOC = "A predicate which checks a record's field value is in configured allowed list";
 
@@ -25,10 +51,10 @@ public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Pr
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(FIELD_NAME_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE,
                     new ConfigDef.NonEmptyString(), ConfigDef.Importance.MEDIUM,
-                    "The name of the record's payload field to verify.")
+                    "The name of the record's payload field to verify. This name is case sensitive.")
             .define(ALLOWED_LIST_CONFIG, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE,
                     new ConfigDef.NonEmptyString(), ConfigDef.Importance.MEDIUM,
-                    "The list of allowed values separated by comma for the field.");
+                    "The list of allowed values separated by comma for the field. The values are case in-sensitive.");
 
     @Override
     public ConfigDef config() {
@@ -69,7 +95,7 @@ public class RecordFieldValueAllowList<R extends ConnectRecord<R>> implements Pr
         SimpleConfig simpleConfig = new SimpleConfig(config(), configs);
         this._fieldName = simpleConfig.getString(FIELD_NAME_CONFIG);
         this._allowedList = Arrays.stream(simpleConfig.getString(ALLOWED_LIST_CONFIG).split(ALLOW_LIST_SPLIT_CHARACTER))
-                .map(String::trim).collect(Collectors.toUnmodifiableSet());
+                .map(x -> x.trim().toLowerCase()).collect(Collectors.toUnmodifiableSet());
     }
 
     public static void main(String[] args) {
