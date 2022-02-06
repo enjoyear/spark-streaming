@@ -6,3 +6,5 @@ out
 *.iml
 *.ipr
 *.iws
+
+spark-warehouse/

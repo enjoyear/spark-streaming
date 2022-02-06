@@ -30,7 +30,7 @@ allprojects {
 
     // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
     // can be tested through DeltaLakeLearn
-    compile "io.delta:delta-core_${versions.scalaMajor}:1.0.0"
+    compile "io.delta:delta-core_${versions.scalaMajor}:1.1.0"
 
     compile "org.scala-lang:scala-library:${versions.scala}"
     compile "org.scala-lang:scala-reflect:${versions.scala}"
