@@ -33,7 +33,7 @@ object WordCountDatabricks2 {
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    val df = spark.table("chen_guo.diamonds")
+    val df = spark.table("test_db.diamonds")
     df.write.mode("overwrite").json(outputPath)
     println(s"Overwrite output ${outputPath}")
 

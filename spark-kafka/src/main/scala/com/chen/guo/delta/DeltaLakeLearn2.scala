@@ -4,7 +4,9 @@ import io.delta.tables._
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
+import java.io.File
 import java.lang
+import scala.reflect.io.Directory
 
 /**
   * Find tutorial here: https://docs.delta.io/latest/quick-start.html#quickstart
@@ -32,10 +34,19 @@ object DeltaLakeLearn2 extends App {
   // https://kontext.tech/column/spark/457/tutorial-turn-off-info-logs-in-spark
   // info log is too much
   spark.sparkContext.setLogLevel("WARN")
-  spark.sql("Create database if not exists chen_guo")
+  cleanUpDBPath("test_db")
   val data: Dataset[lang.Long] = spark.range(0, 5)
-  private val outputPath = "/tmp/spark/delta-table"
+  data.write.format("delta").saveAsTable("test_db.deleteme")
 
-  //data.write.format("delta").mode("overwrite").save(outputPath)
-  data.write.format("delta").saveAsTable("chen_guo.deleteme")
+  def cleanUpDBPath(dbName: String): Unit = {
+    // The database isn't recognized for some reason when the Spark starts even if the DB folder exists on disk
+    // Create the DB again to register it in the delta catalog
+    spark.sql(s"create database if not exists $dbName")
+
+    val dbMetadata = spark.sessionState.catalog.getDatabaseMetadata(dbName)
+    val dbPath = dbMetadata.locationUri.toString
+    val directory = new Directory(new File(dbPath))
+    // Clean up the DB folder before each one
+    directory.deleteRecursively()
+  }
 }
