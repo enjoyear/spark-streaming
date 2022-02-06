@@ -44,9 +44,11 @@ object DeltaLakeLearn2 extends App {
     spark.sql(s"create database if not exists $dbName")
 
     val dbMetadata = spark.sessionState.catalog.getDatabaseMetadata(dbName)
-    val dbPath = dbMetadata.locationUri.toString
+    val dbPath = dbMetadata.locationUri
+
     val directory = new Directory(new File(dbPath))
     // Clean up the DB folder before each one
-    directory.deleteRecursively()
+    val status = directory.deleteRecursively()
+    println(s"Deletion status: $status")
   }
 }
