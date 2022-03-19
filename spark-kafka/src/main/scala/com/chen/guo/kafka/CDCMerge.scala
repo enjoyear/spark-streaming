@@ -102,7 +102,7 @@ object CDCMerge extends App with WithSparkSession {
     .option("mergeSchema", "true")
     .outputMode(OutputMode.Update())
     .trigger(Trigger.ProcessingTime("5 seconds"))
-    .format("console") // CAREFUL!!! This "format" must be placed before "foreachBatch", otherwise WRONG result !!!
+    // https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#output-sinks
     .foreachBatch((microBatchDF: DataFrame, batchId: Long) => mergeIntoTargetTable(microBatchDF, batchId))
     .start()
 
