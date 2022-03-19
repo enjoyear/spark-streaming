@@ -1,5 +1,6 @@
 package com.chen.guo.kafka
 
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.expressions.{Window, WindowSpec}
@@ -9,7 +10,6 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import java.io.File
-import java.text.SimpleDateFormat
 import scala.reflect.io.Directory
 
 /**
@@ -196,7 +196,7 @@ object CDCMerge extends App with WithSparkSession {
 trait WithSparkSession {
   val spark: SparkSession = SparkSession.builder()
     .master("local[4]")
-    .appName("test")
+    .appName("cdc")
     //.enableHiveSupport() // Try to create a DELTA table instead of turning this on
     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
@@ -204,10 +204,8 @@ trait WithSparkSession {
 
   val sc = spark.sparkContext
   sc.setLogLevel("WARN")
-
-  // The formatter that matches the default format for Spark's to_timestamp() UDF
-  val dateHourFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-  val dateHourMinuteSecondFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+  Logger.getLogger("org").setLevel(Level.OFF)
+  Logger.getLogger("akka").setLevel(Level.OFF)
 
   /**
     * |-- key: binary (nullable = true)
