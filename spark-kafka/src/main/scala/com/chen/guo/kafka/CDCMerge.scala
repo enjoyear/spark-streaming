@@ -160,8 +160,8 @@ object CDCMerge extends App with WithSparkSession {
           USING $streamView $sourceStreamAlias
           ON $mergeCondition
           WHEN MATCHED and $sourceStreamAlias.oc = "D" THEN DELETE
-          WHEN MATCHED and $sourceStreamAlias.oc != "D" THEN UPDATE SET *
-          WHEN NOT MATCHED THEN INSERT *
+          WHEN MATCHED and $sourceStreamAlias.oc = "U" THEN UPDATE SET *
+          WHEN NOT MATCHED and $sourceStreamAlias.oc != "D" THEN INSERT *
         """)
 
       println(s"Target table $databaseName.$targetTable after Batch $batchId")
