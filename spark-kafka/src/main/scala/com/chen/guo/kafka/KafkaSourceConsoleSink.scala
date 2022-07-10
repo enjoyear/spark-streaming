@@ -1,7 +1,11 @@
 package com.chen.guo.kafka
 
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
+import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
+import org.apache.spark.sql.streaming._
 import org.apache.spark.sql.{Dataset, SparkSession}
+import org.slf4j.LoggerFactory
+
+import java.text.SimpleDateFormat
 
 /**
   * Ref:
@@ -23,7 +27,7 @@ object KafkaSourceConsoleSink extends App {
 
   val spark = SparkSession
     .builder
-    .master("local[2]")
+    .master("local[1]")
     .appName("KafkaIntegration")
     .getOrCreate()
 
@@ -33,7 +37,7 @@ object KafkaSourceConsoleSink extends App {
 
   import spark.implicits._
 
-  val topicName = "quickstart-events"
+  val topicName = "TestTopic"
 
   val df = spark
     .readStream
@@ -44,21 +48,57 @@ object KafkaSourceConsoleSink extends App {
     //start consuming from the earliest. By default it will be the latest, which is to discard all history
     //.option("startingOffsets", "earliest")
     //change to {"$topicName":{"0":1}} if you want to read from offset 1
-    .option("startingOffsets", s"""{"$topicName":{"0":-2}}""")
+    //.option("startingOffsets", s"""{"$topicName":{"0":-2}}""")
     //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
     .load()
 
   val kafkaDF: Dataset[(String, String)] = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
     .as[(String, String)]
 
+  // Must be placed before the DataStreamWriter.start(), otherwise onQueryStarted won't be called
+  spark.streams.addListener(new PausableStreamQueryListener(spark.streams))
+
   val query: StreamingQuery = kafkaDF.writeStream
     .queryName("kafka-ingest")
     .outputMode(OutputMode.Append())
     .option("numRows", 100) //show more than 20 rows by default
     .option("truncate", value = false) //To show the full column content
-    .trigger(Trigger.ProcessingTime("3 seconds"))
+    .trigger(Trigger.ProcessingTime("10 seconds"))
     .format("console")
     .start()
 
   query.awaitTermination()
+}
+
+class PausableStreamQueryListener(sqm: StreamingQueryManager) extends StreamingQueryListener {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  val id2Name = scala.collection.mutable.HashMap[java.util.UUID, String]()
+
+  override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
+    logger.info(s"Query ${queryStarted.name} started at ${queryStarted.timestamp}: id ${queryStarted.id}, run id ${queryStarted.runId}")
+    id2Name(queryStarted.id) = queryStarted.name
+  }
+
+  override def onQueryTerminated(queryTerminated: QueryTerminatedEvent): Unit = {
+    val queryName = id2Name(queryTerminated.id)
+
+    logger.info(s"Query terminated: id ${queryTerminated.id}, run id ${queryTerminated.runId}, " +
+      s"exception ${queryTerminated.exception.getOrElse("n/a")}")
+  }
+
+  // for monitoring purpose
+  override def onQueryProgress(queryProgress: QueryProgressEvent): Unit = {
+    val queryName = id2Name(queryProgress.progress.id)
+
+    logger.info(s"${new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(System.currentTimeMillis)}: Query ${queryProgress.progress.name} made progress. " +
+      s"Time take for retrieving latestOffset: ${queryProgress.progress.durationMs.get("latestOffset")}")
+
+    if (queryProgress.progress.numInputRows <= 0)
+      return
+
+    queryProgress.progress.sources.foreach(source => {
+      logger.info(s"InputRows/s ${source.inputRowsPerSecond}, ProcessedRows/s ${source.processedRowsPerSecond}")
+    })
+  }
+
 }
