@@ -79,7 +79,7 @@ object KafkaSourceConsoleSink extends App {
     query.awaitTermination()
   } catch {
     case t: Throwable =>
-      logger.info(s"Stream terminated. Got exception: $t")
+      logger.info(s"Stream terminated. Got exception: $t. Stacktrace is ${t.getStackTrace.mkString("\n")}")
   }
 }
 
