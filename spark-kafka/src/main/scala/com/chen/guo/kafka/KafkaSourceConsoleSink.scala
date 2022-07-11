@@ -74,6 +74,7 @@ object KafkaSourceConsoleSink extends App {
     .start()
 
   logger.info("Stream started.")
+  // Termination Implementation 1
   try {
     // This is a blocking call
     query.awaitTermination()
@@ -81,6 +82,23 @@ object KafkaSourceConsoleSink extends App {
     case t: Throwable =>
       logger.info(s"Stream terminated. Got exception: $t. Stacktrace is ${t.getStackTrace.mkString("\n")}")
   }
+
+  //// Termination Implementation 2
+  //  while (!spark.streams.active.isEmpty) {
+  //    logger.info("Queries currently still active: " + spark.streams.active.map(x => x.name).mkString(","))
+  //    try {
+  //      //await any to terminate
+  //      spark.streams.awaitAnyTermination()
+  //    } catch {
+  //      case e: StreamingQueryException =>
+  //        logger.info(s"Query failed (${e.message}) due to ${e.cause.getStackTrace.mkString("\n")}")
+  //        logger.info("Queries currently still active: " + spark.streams.active.map(x => x.name).mkString(","))
+  //        spark.streams.resetTerminated()
+  //
+  //      case t: Throwable =>
+  //        throw new RuntimeException(s"Stream status is ${spark.streams.active}", t)
+  //    }
+  //  }
 }
 
 class UDFWithException {
