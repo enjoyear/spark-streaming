@@ -24,7 +24,7 @@ import java.text.SimpleDateFormat
   * Setup local Kafka cluster as in https://kafka.apache.org/quickstart
   */
 object KafkaSourceConsoleSink extends App {
-
+  val logger = LoggerFactory.getLogger(this.getClass)
   val spark = SparkSession
     .builder
     .master("local[1]")
@@ -52,13 +52,19 @@ object KafkaSourceConsoleSink extends App {
     //.option("endingOffsets", "latest")  //ending offset cannot be set in streaming queries
     .load()
 
-  val kafkaDF: Dataset[(String, String)] = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+  val kafkaDF: Dataset[(String, String)] = df
+    .selectExpr("CAST(key AS STRING) as key", "CAST(value AS STRING) as val")
     .as[(String, String)]
 
   // Must be placed before the DataStreamWriter.start(), otherwise onQueryStarted won't be called
   spark.streams.addListener(new PausableStreamQueryListener(spark.streams))
 
-  val query: StreamingQuery = kafkaDF.writeStream
+  val udfWithException = new UDFWithException()
+  spark.udf.register("throwException", (x: Int) => udfWithException.throwException(x))
+
+  val query: StreamingQuery = kafkaDF
+    .selectExpr("key", "throwException(CAST(val AS INT))")
+    .writeStream
     .queryName("kafka-ingest")
     .outputMode(OutputMode.Append())
     .option("numRows", 100) //show more than 20 rows by default
@@ -67,7 +73,23 @@ object KafkaSourceConsoleSink extends App {
     .format("console")
     .start()
 
-  query.awaitTermination()
+  logger.info("Stream started.")
+  try {
+    // This is a blocking call
+    query.awaitTermination()
+  } catch {
+    case t: Throwable =>
+      logger.info(s"Stream terminated. Got exception: $t")
+  }
+}
+
+class UDFWithException {
+  def throwException(num: Int): Int = {
+    if (num == 1) {
+      return num
+    }
+    throw new RuntimeException(s"Got unexpected number $num")
+  }
 }
 
 class PausableStreamQueryListener(sqm: StreamingQueryManager) extends StreamingQueryListener {
