@@ -1,10 +1,10 @@
 package com.chen.guo
 
 import org.apache.spark.ml.clustering.{KMeans, KMeansModel}
-import org.apache.spark.ml.evaluation.ClusteringEvaluator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{ArrayType, DoubleType, StructField, StructType}
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.functions.{min, max}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 object MyKMeans extends App {
   val spark = SparkSession
@@ -26,21 +26,17 @@ object MyKMeans extends App {
 
   df.show()
 
-  // Trains a k-means model.
+  // Train a k-means model.
   val kmeans = new KMeans().setK(3).setSeed(1L)
   val model: KMeansModel = kmeans.fit(df)
 
-  //  // Make predictions
-  //  val predictions = model.transform(df)
-  //
-  //  // Evaluate clustering by computing Silhouette score
-  //  val evaluator = new ClusteringEvaluator()
-  //
-  //  val silhouette = evaluator.evaluate(predictions)
-  //  println(s"Silhouette with squared euclidean distance = $silhouette")
-
-  // Shows the result.
   println(s"Cluster Centers: ${model.clusterCenters.length}")
   model.clusterCenters.foreach(println)
-  println("Done")
+
+  // Make predictions
+  val predictions: DataFrame = model.transform(df)
+  predictions.select(predictions("features")(0).as("id"), predictions("prediction"))
+    .groupBy("prediction")
+    .agg(min("id").as("rangeMin"), max("id").as("rangeMax"))
+    .show
 }
