@@ -60,10 +60,10 @@ object KafkaSourceConsoleSink extends App {
   spark.streams.addListener(new PausableStreamQueryListener(spark.streams))
 
   val udfWithException = new UDFWithException()
-  spark.udf.register("throwException", (x: Int) => udfWithException.throwException(x))
+  spark.udf.register("throwExceptionIfLessThan10", (x: Int) => udfWithException.throwException(x))
 
   val query: StreamingQuery = kafkaDF
-    .selectExpr("key", "throwException(CAST(val AS INT))")
+    .selectExpr("key", "throwExceptionIfLessThan10(CAST(val AS INT))")
     .writeStream
     .queryName("kafka-ingest")
     .outputMode(OutputMode.Append())
@@ -99,15 +99,6 @@ object KafkaSourceConsoleSink extends App {
   //        throw new RuntimeException(s"Stream status is ${spark.streams.active}", t)
   //    }
   //  }
-}
-
-class UDFWithException {
-  def throwException(num: Int): Int = {
-    if (num == 1) {
-      return num
-    }
-    throw new RuntimeException(s"Got unexpected number $num")
-  }
 }
 
 class PausableStreamQueryListener(sqm: StreamingQueryManager) extends StreamingQueryListener {

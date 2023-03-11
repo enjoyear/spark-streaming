@@ -5,9 +5,11 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecords, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{from_json, _}
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.streaming._
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.types.{StructType, _}
 
 import java.text.SimpleDateFormat
 import java.util.Properties
@@ -32,6 +34,9 @@ import java.util.Properties
   * echo '1:{"id": "s1", "val": 1}' | kcat -P -b localhost:9092 -t cdc-1 -K:
   * echo '1:{"id": "s2", "val": 2}' | kcat -P -b localhost:9092 -t cdc-2 -K:
   * echo '1:{"id": "s3", "val": 3}' | kcat -P -b localhost:9092 -t cdc-3 -K:
+  *
+  * trigger a failure:
+  * echo '1:{"id": "s1", "val": 11}' | kcat -P -b localhost:9092 -t cdc-1 -K:
   */
 object KafkaDynamicStreams extends App {
   val logger = LogManager.getLogger(this.getClass)
@@ -44,6 +49,8 @@ object KafkaDynamicStreams extends App {
   // https://kontext.tech/column/spark/457/tutorial-turn-off-info-logs-in-spark
   // info log is too much
   spark.sparkContext.setLogLevel("WARN")
+  val udfWithException = new UDFWithException()
+  spark.udf.register("throwExceptionIfLessThan10", (x: Int) => udfWithException.throwException(x))
 
   // Must be placed before the DataStreamWriter.start(), otherwise onQueryStarted won't be called
   spark.streams.addListener(new QueryListener2(spark.streams))
@@ -54,6 +61,18 @@ object KafkaDynamicStreams extends App {
 
   val mapper = new ObjectMapper()
   mapper.registerModule(DefaultScalaModule)
+
+  new Thread(new Runnable {
+    val logger: Logger = LogManager.getLogger(this.getClass)
+
+    override def run(): Unit = {
+      while (true) {
+        Thread.sleep(2000)
+        val activeStreams = spark.streams.active.map(_.name)
+        logger.info(s"${activeStreams.length} active streams: ${activeStreams.mkString(",")}")
+      }
+    }
+  }).start()
 
   while (true) {
     val records: ConsumerRecords[String, String] = tasksConsumer.poll(java.time.Duration.ofMillis(1000))
@@ -66,8 +85,8 @@ object KafkaDynamicStreams extends App {
         logger.info(s"Got $streamTask")
         val topicName = streamTask("topic_name")
         val streamName = "Stream-for-" + topicName
-        logger.info(s">>>>>>>>>>>  Add a new stream $streamName for $topicName <<<<<<<<<<<<<")
-        new Thread(new AddStream(spark, topicName, streamName)).start()
+        logger.info(s"Adding a new stream $streamName for $topicName...")
+        new Thread(new AddStream(spark, topicName, streamName, 3)).start()
       } catch {
         case consumeException: Exception =>
           logger.error(s"Creating new stream failed for $streamTask with error: ${consumeException.getLocalizedMessage}")
@@ -90,6 +109,7 @@ object KafkaDynamicStreams extends App {
         logger.error(s"Failed to commit for $taskTopicName with error: ${commitException.getLocalizedMessage}")
     }
   }
+
 
   //// Termination Implementation 2
   //  while (!spark.streams.active.isEmpty) {
@@ -131,10 +151,13 @@ object KafkaDynamicStreams extends App {
   }
 }
 
-class AddStream(ss: SparkSession, topicName: String, streamName: String) extends Runnable {
+class AddStream(ss: SparkSession, topicName: String, streamName: String, retries: Int) extends Runnable {
   val logger: Logger = LogManager.getLogger(this.getClass)
 
-  import ss.implicits._
+  val schema: StructType = StructType(Array(
+    StructField("id", StringType),
+    StructField("val", IntegerType)
+  ))
 
   def run() {
     val df = ss
@@ -145,11 +168,17 @@ class AddStream(ss: SparkSession, topicName: String, streamName: String) extends
       .option("startingOffsets", "latest")
       .load()
 
-    val kafkaDF: Dataset[(String, String)] = df
-      .selectExpr("CAST(key AS STRING) as key", "CAST(value AS STRING) as val")
-      .as[(String, String)]
+    import ss.implicits._
 
-    val query: StreamingQuery = kafkaDF
+    val kafkaDF = df
+      .select(col("key").cast("string"), from_json(col("value").cast("string"), schema).as("payload"))
+      .select(col("key"),
+        col("payload.id").as("id"),
+        col("payload.val").as("val"))
+      .selectExpr("key", "id", "throwExceptionIfLessThan10(val)")
+      .as[(String, String, Int)]
+
+    val streamWriter: DataStreamWriter[(String, String, Int)] = kafkaDF
       .writeStream
       .queryName(streamName)
       .outputMode(OutputMode.Append())
@@ -157,17 +186,22 @@ class AddStream(ss: SparkSession, topicName: String, streamName: String) extends
       .option("truncate", value = false) //To show the full column content
       .trigger(Trigger.ProcessingTime("10 seconds"))
       .format("console")
-      .start()
 
-    try {
-      // This is a blocking call
-      query.awaitTermination()
-    } catch {
-      case t: Throwable =>
-        logger.info(s"Stream terminated. Got exception: $t. Stacktrace is ${t.getStackTrace.mkString("\n")}")
+    var remaining = retries
+    while (remaining >= 0) {
+      remaining = remaining - 1
+      val query: StreamingQuery = streamWriter.start()
+      try {
+        // This is a blocking call
+        query.awaitTermination()
+      } catch {
+        case t: Throwable =>
+          logger.warn(s"Stream $streamName terminated with exception $t: ${t.getStackTrace.mkString("\n")}. Restarting it with remaining retries: $remaining")
+      }
     }
-  }
 
+    logger.warn(s"Stream $streamName terminated after exhausting all $retries retries.")
+  }
 }
 
 class QueryListener2(sqm: StreamingQueryManager) extends StreamingQueryListener {
