@@ -13,6 +13,8 @@ import org.apache.spark.sql.types.{StructType, _}
 
 import java.text.SimpleDateFormat
 import java.util.Properties
+import scala.collection.JavaConverters._
+import scala.util.control.Breaks._
 
 /**
   * Create test topics:
@@ -76,30 +78,37 @@ object KafkaDynamicStreams extends App {
 
   while (true) {
     val records: ConsumerRecords[String, String] = tasksConsumer.poll(java.time.Duration.ofMillis(1000))
-    records.forEach(record => {
-      val taskEventKey = record.key()
-      val taskEventVal = record.value()
-      val streamTask: Map[String, String] = mapper.readValue(taskEventVal, classOf[Map[String, String]])
+    for (record <- records.asScala) {
+      breakable {
+        val taskEventKey = record.key()
+        val taskEventVal = record.value()
+        val streamTask: Map[String, String] = mapper.readValue(taskEventVal, classOf[Map[String, String]])
 
-      try {
-        logger.info(s"Got $streamTask")
-        val topicName = streamTask("topic_name")
-        val streamName = "Stream-for-" + topicName
-        logger.info(s"Adding a new stream $streamName for $topicName...")
-        new Thread(new AddStream(spark, topicName, streamName, 3)).start()
-      } catch {
-        case consumeException: Exception =>
-          logger.error(s"Creating new stream failed for $streamTask with error: ${consumeException.getLocalizedMessage}")
-          val record: ProducerRecord[String, String] = new ProducerRecord[String, String](taskDLQTopicName, taskEventKey, taskEventVal)
-          try {
-            // Produce synchronously
-            unhandledTasksProducer.send(record).get()
-          } catch {
-            case produceException: Exception =>
-              logger.error(s"Failed to send unprocessed task $streamTask with error: ${produceException.getLocalizedMessage}")
+        try {
+          logger.info(s"Got $streamTask")
+          val topicName = streamTask("topic_name")
+          val streamName = "Stream-for-" + topicName
+          if (spark.streams.active.map(_.name).toSet.contains(streamName)) {
+            logger.warn(s"Skip adding the stream $streamName because it already exists")
+            break
           }
+
+          logger.info(s"Adding a new stream $streamName for $topicName...")
+          new Thread(new AddStream(spark, topicName, streamName, 3)).start()
+        } catch {
+          case consumeException: Exception =>
+            logger.error(s"Creating new stream failed for $streamTask with error: ${consumeException.getLocalizedMessage}")
+            val record: ProducerRecord[String, String] = new ProducerRecord[String, String](taskDLQTopicName, taskEventKey, taskEventVal)
+            try {
+              // Produce synchronously
+              unhandledTasksProducer.send(record).get()
+            } catch {
+              case produceException: Exception =>
+                logger.error(s"Failed to send unprocessed task $streamTask with error: ${produceException.getLocalizedMessage}")
+            }
+        }
       }
-    })
+    }
 
     try {
       // Consume synchronously
