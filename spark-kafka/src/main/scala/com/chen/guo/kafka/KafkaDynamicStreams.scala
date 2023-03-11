@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecords, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.logging.log4j.{LogManager, Logger}
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.streaming._
 import org.apache.spark.sql.{Dataset, SparkSession}
-import org.slf4j.{Logger, LoggerFactory}
 
 import java.text.SimpleDateFormat
 import java.util.Properties
@@ -23,14 +23,21 @@ import java.util.Properties
   * To Listen:
   * kcat -C -t dlq-soon-tasks -b localhost:9092
   *
-  * Send test events
-  * echo '1:{"topic_name": "cdc_t1", "task_id": 1}' | kcat -P -b localhost:9092 -t soon-tasks -K:
+  * Send events to create streams:
+  * echo '1:{"topic_name": "cdc-1"}' | kcat -P -b localhost:9092 -t soon-tasks -K:
+  * echo '1:{"topic_name": "cdc-2"}' | kcat -P -b localhost:9092 -t soon-tasks -K:
+  * echo '1:{"topic_name": "cdc-3"}' | kcat -P -b localhost:9092 -t soon-tasks -K:
+  *
+  * Send CDC events:
+  * echo '1:{"id": "s1", "val": 1}' | kcat -P -b localhost:9092 -t cdc-1 -K:
+  * echo '1:{"id": "s2", "val": 2}' | kcat -P -b localhost:9092 -t cdc-2 -K:
+  * echo '1:{"id": "s3", "val": 3}' | kcat -P -b localhost:9092 -t cdc-3 -K:
   */
 object KafkaDynamicStreams extends App {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger = LogManager.getLogger(this.getClass)
   val spark = SparkSession
     .builder
-    .master("local[4]")
+    .master("local[2]")
     .appName("KafkaIntegration")
     .getOrCreate()
 
@@ -58,9 +65,9 @@ object KafkaDynamicStreams extends App {
       try {
         logger.info(s"Got $streamTask")
         val topicName = streamTask("topic_name")
-        val streamName = "Stream" + streamTask("task_id")
-        logger.info(s">>>>>>>>>>>  adding new stream $topicName , $streamName <<<<<<<<<<<<<")
-        // new Thread(new MyThread(spark, topicName, streamName)).start()
+        val streamName = "Stream-for-" + topicName
+        logger.info(s">>>>>>>>>>>  Add a new stream $streamName for $topicName <<<<<<<<<<<<<")
+        new Thread(new AddStream(spark, topicName, streamName)).start()
       } catch {
         case consumeException: Exception =>
           logger.error(s"Creating new stream failed for $streamTask with error: ${consumeException.getLocalizedMessage}")
@@ -124,8 +131,8 @@ object KafkaDynamicStreams extends App {
   }
 }
 
-class MyThread(ss: SparkSession, topicName: String, streamName: String) extends Runnable {
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+class AddStream(ss: SparkSession, topicName: String, streamName: String) extends Runnable {
+  val logger: Logger = LogManager.getLogger(this.getClass)
 
   import ss.implicits._
 
@@ -163,11 +170,8 @@ class MyThread(ss: SparkSession, topicName: String, streamName: String) extends 
 
 }
 
-// start your runnable thread somewhere later in the code
-
-
 class QueryListener2(sqm: StreamingQueryManager) extends StreamingQueryListener {
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LogManager.getLogger(this.getClass)
 
   override def onQueryStarted(queryStarted: QueryStartedEvent): Unit = {
     logger.info(s"Query ${queryStarted.name} started at ${queryStarted.timestamp}: id ${queryStarted.id}, run id ${queryStarted.runId}")
