@@ -1,9 +1,10 @@
 package com.chen.guo
 
 import org.apache.spark.ml.clustering.{KMeans, KMeansModel}
+import org.apache.spark.ml.functions.{array_to_vector, vector_to_array}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.functions.{col, max, min}
 import org.apache.spark.sql.types.{ArrayType, DoubleType, StructField, StructType}
-import org.apache.spark.sql.functions.{min, max}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 object MyKMeans extends App {
@@ -23,6 +24,8 @@ object MyKMeans extends App {
 
   val table1Schema: StructType = StructType(table1KeySchema.fields)
   val df = spark.createDataFrame(rdd, table1Schema)
+    // the input to KMeans should be a vector
+    .withColumn("features", array_to_vector(col("features")))
 
   df.show()
 
@@ -35,7 +38,7 @@ object MyKMeans extends App {
 
   // Make predictions
   val predictions: DataFrame = model.transform(df)
-  predictions.select(predictions("features")(0).as("id"), predictions("prediction"))
+  predictions.select(vector_to_array(predictions("features"))(0).as("id"), predictions("prediction"))
     .groupBy("prediction")
     .agg(min("id").as("rangeMin"), max("id").as("rangeMax"))
     .show

@@ -1,8 +1,9 @@
 package com.chen.guo
 
 import org.apache.spark.ml.clustering.{KMeans, KMeansModel}
+import org.apache.spark.ml.functions.{array_to_vector, vector_to_array}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{max, min}
+import org.apache.spark.sql.functions.{col, max, min}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
@@ -15,13 +16,16 @@ object MyKMeansString extends App {
   val sc = spark.sparkContext
 
   val mongoIds: List[String] = List(
-    "589f06ce2289a051cbef8bbc",
-    "589c567963193a503f3fe579",
-    "589568ecd752f100975789cc",
-    "589aa6638c9737029b03cfd8",
-    "5890ef2054b3ac3c1ffac6d7",
-    "589fa0a1f7cf5b08d7aaed38",
-    "58956839293a79008b602841"
+    "63ff2f4fcb72c100017bcd0c",
+    "64b0f74de35c7700011441bf",
+    "64b6e161efcecc0001763dca",
+    "64b80e8468c1b8000184b16c",
+    "64c4243653ef6a0001a3fd38",
+    "64c81a11e137c100010e8952",
+    "64c81c67461a230001415fe2",
+    "64c820ee845c87000102f4f8",
+    "64c837f0835d770001e9c423",
+    "64c839e8962fab00010803e0"
   )
 
   val mongoIdSchema: StructType = StructType(Array(
@@ -39,11 +43,14 @@ object MyKMeansString extends App {
     StructField("features", ArrayType(DoubleType, false), nullable = false)
   ))
   val df = spark.createDataFrame(rdd, featureSchema)
+    // the job will fail if not converting array to vector using array_to_vector and vector_to_array
+    // error message will be: java.lang.ArrayIndexOutOfBoundsException: Index 6 out of bounds for length 6
+    .withColumn("features", array_to_vector(col("features")))
 
   df.show()
 
   // Train a k-means model.
-  val kmeans = new KMeans().setK(3).setSeed(1L)
+  val kmeans = new KMeans().setK(10).setSeed(1L)
   val model: KMeansModel = kmeans.fit(df)
 
   println(s"Cluster Centers: ${model.clusterCenters.length}")
@@ -51,7 +58,7 @@ object MyKMeansString extends App {
 
   // Make predictions
   val predictions: DataFrame = model.transform(df)
-  val ranges = predictions.select(predictions("features")(0).as("id"), predictions("prediction"))
+  val ranges = predictions.select(vector_to_array(predictions("features"))(0).as("id"), predictions("prediction"))
     .groupBy("prediction")
     .agg(min("id").as("rangeMin"), max("id").as("rangeMax"))
 

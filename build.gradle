@@ -17,7 +17,7 @@ allprojects {
 
     ext.versions = [scalaMajor: '2.12',
                     scala     : '2.12.12',
-                    spark     : '3.2.0']  // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
+                    spark     : '3.4.1']  // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
 
     dependencies {
         compile "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
