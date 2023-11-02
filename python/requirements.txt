@@ -1,3 +1,5 @@
--- pip install -r requirements.txt
+# pip install -r requirements.txt
+
 boto3==1.10.50
-confluent_kafka==1.7.0
+confluent_kafka==2.3.0
+pyspark==3.5.0
