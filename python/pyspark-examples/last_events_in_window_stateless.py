@@ -92,9 +92,9 @@ def keep_in_memory_map(micro_batch: DataFrame, batch_id: int, spark: SparkSessio
 (
     df
     .writeStream
+    .outputMode('update')
     .queryName("in-memory-map")
     .trigger(processingTime="10 seconds")
     .foreachBatch(lambda micro_batch, batch_id: keep_in_memory_map(micro_batch, batch_id, spark))
     .start()
 )
-
