@@ -58,8 +58,8 @@ val df = Seq(
 /**
   * This solution below will fail due to serialization issue.
   */
-//val maxOrderDataAggregator = new LastestEventByKey().toColumn.name("max_order_data")
-//df.groupBy("id").agg(maxOrderDataAggregator("order", "data")).show()
+//val latestEventAggregator = LatestEventByKey.toColumn.name("max_order_data")
+//df.groupBy("id").agg(latestEventAggregator($"order", $"data")).show()
 
 df.createOrReplaceGlobalTempView("events")
 spark.udf.register("latest_event", functions.udaf(LatestEventByKey))
