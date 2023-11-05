@@ -5,7 +5,7 @@ import org.apache.spark.sql.functions.window
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
 import org.apache.spark.sql.{DataFrame, Encoder, Encoders, SparkSession, functions}
 
-val spark = SparkSession.builder.appName("MaxOrderDataUDAF").getOrCreate()
+val spark = SparkSession.builder.appName("MyAverage").getOrCreate()
 import spark.implicits._
 
 case class Average(var sum: Long, var count: Long)
