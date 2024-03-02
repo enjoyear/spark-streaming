@@ -1,5 +1,6 @@
 rootProject.name = 'sparkstreaming'
 
+include 'udfs'
 include 'kafka-connect'
 include 'spark-kafka'
 include 'spark-ml'

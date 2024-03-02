@@ -2,7 +2,9 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
-import time
+from pyspark.sql.streaming.state import GroupState, GroupStateTimeout
+from typing import Tuple, Iterator
+import pandas as pd
 
 spark = SparkSession.builder \
     .appName("EventStreamProcessing") \
@@ -45,12 +47,13 @@ df = (
     .select(from_json(col("value").cast("string"), schema).alias("value"), col("partition"), col("offset"),
             col("timestamp"))
     .selectExpr("timestamp", "partition", "offset", "value.*")
-    .selectExpr("timestamp", "partition", "offset", "name", "value")
+    .selectExpr("timestamp", "name", "value")
 )
 
 mapSchema = StructType([
     StructField("name", StringType(), True),
-    StructField("value", IntegerType(), True),
+    StructField("value1", IntegerType(), True),
+    StructField("value2", LongType(), True),
 ])
 
 temp_table_name = "last_events_in_window"
@@ -58,49 +61,44 @@ spark.createDataFrame(spark.sparkContext.emptyRDD(), mapSchema).createOrReplaceT
 lcsWindow = Window.partitionBy("name", window("timestamp", "30 seconds")).orderBy(desc("timestamp"))
 
 
-def keep_in_memory_map(micro_batch: DataFrame, batch_id: int, spark: SparkSession) -> None:
-    print("Showing incoming micro_batch for batch_id: ", batch_id)
-    micro_batch.show()
-
-    if batch_id % 10 == 0:
-        print("Persisting last_events_in_window for batch_id: ", batch_id)
-        spark.table(temp_table_name).write.mode("overwrite").saveAsTable("chen_guo.last_events_in_window")
-        previous_map = spark.table("chen_guo.last_events_in_window").alias("previous_map")
+def func(
+        key: Tuple[str], pdfs: Iterator[pd.DataFrame], state: GroupState
+) -> Iterator[pd.DataFrame]:
+    if state.hasTimedOut:
+        (word,) = key
+        (count,) = state.get
+        state.remove()
+        yield pd.DataFrame({"session": [word], "count": [count]})
     else:
-        previous_map = spark.table(temp_table_name).alias("previous_map")
+        # Aggregate the number of words.
+        count = sum(map(lambda pdf: len(pdf), pdfs))
+        if state.exists:
+            (old_count,) = state.get
+            count += old_count
+        state.update((count,))
+        # Set the timeout as 10 seconds.
+        state.setTimeoutDuration(10000)
+        yield pd.DataFrame()
 
-    # Pick the latest change for a name
-    updates = (
-        micro_batch
-        .withColumn("rn", row_number().over(lcsWindow))
-        .where("rn = 1")
-        .select("name", "value")
-        .alias("updates")
+
+output_schema = "name STRING, count LONG"
+state_schema = "value1 INTEGER, value2 LONG"
+
+last_events = (
+    df.groupBy(
+        df["name"],
+        window("timestamp", "30 seconds", "10 seconds")
     )
-
-    last_events_by_name = (
-        previous_map
-        .join(updates, col('previous_map.name') == col('updates.name'), "full_outer")
-        .select(
-            coalesce(col('updates.name'), col('previous_map.name')).alias("name"),
-            coalesce(col('updates.value'), col('previous_map.value')).alias("value"),
-        )
-        .cache()
+    .agg(
+        last()
     )
-
-    last_events_by_name.count()
-    print("Latest map at batch_id: ", batch_id)
-    last_events_by_name.show()
-    spark.table(temp_table_name).unpersist()
-    last_events_by_name.createOrReplaceTempView(temp_table_name)
-
-
-(
-    df
-    .writeStream
-    .outputMode('update')
-    .queryName("in-memory-map")
-    .trigger(processingTime="10 seconds")
-    .foreachBatch(lambda micro_batch, batch_id: keep_in_memory_map(micro_batch, batch_id, spark))
-    .start()
+    .applyInPandasWithState(
+        func,
+        output_schema,
+        state_schema,
+        "append",
+        GroupStateTimeout.ProcessingTimeTimeout,
+    )
 )
+
+query = last_events.writeStream.foreachBatch(lambda micro_batch, _: micro_batch.show()).start()

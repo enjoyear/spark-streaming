@@ -1,7 +1,7 @@
 package chen.guo.udaf
 
 import org.apache.spark.sql.expressions.Aggregator
-import org.apache.spark.sql.functions.window
+import org.apache.spark.sql.functions.{last, window}
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
 import org.apache.spark.sql.{DataFrame, Encoder, Encoders, SparkSession, functions}
 
