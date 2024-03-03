@@ -54,20 +54,21 @@ mapSchema = StructType([
 ])
 
 temp_table_name = "last_events_in_window"
-spark.createDataFrame(spark.sparkContext.emptyRDD(), mapSchema).createOrReplaceTempView(temp_table_name)
+checkpoint_table_name = "users.chen_guo.last_events_in_window"
+spark.createDataFrame([], mapSchema).createOrReplaceTempView(temp_table_name)
 lcsWindow = Window.partitionBy("name", window("timestamp", "30 seconds")).orderBy(desc("timestamp"))
 
 
-def keep_in_memory_map(micro_batch: DataFrame, batch_id: int, spark: SparkSession) -> None:
+def keep_in_memory_map(micro_batch: DataFrame, batch_id: int) -> None:
     print("Showing incoming micro_batch for batch_id: ", batch_id)
     micro_batch.show()
 
     if batch_id % 10 == 0:
         print("Persisting last_events_in_window for batch_id: ", batch_id)
-        spark.table(temp_table_name).write.mode("overwrite").saveAsTable("chen_guo.last_events_in_window")
-        previous_map = spark.table("chen_guo.last_events_in_window").alias("previous_map")
+        micro_batch.sparkSession.table(temp_table_name).write.mode("overwrite").saveAsTable(checkpoint_table_name)
+        previous_map = micro_batch.sparkSession.table(checkpoint_table_name).alias("previous_map")
     else:
-        previous_map = spark.table(temp_table_name).alias("previous_map")
+        previous_map = micro_batch.sparkSession.table(temp_table_name).alias("previous_map")
 
     # Pick the latest change for a name
     updates = (
@@ -91,16 +92,18 @@ def keep_in_memory_map(micro_batch: DataFrame, batch_id: int, spark: SparkSessio
     last_events_by_name.count()
     print("Latest map at batch_id: ", batch_id)
     last_events_by_name.show()
-    spark.table(temp_table_name).unpersist()
+    micro_batch.sparkSession.table(temp_table_name).unpersist()
     last_events_by_name.createOrReplaceTempView(temp_table_name)
 
 
-(
+query = (
     df
     .writeStream
     .outputMode('update')
     .queryName("in-memory-map")
     .trigger(processingTime="10 seconds")
-    .foreachBatch(lambda micro_batch, batch_id: keep_in_memory_map(micro_batch, batch_id, spark))
+    .foreachBatch(lambda micro_batch, batch_id: keep_in_memory_map(micro_batch, batch_id))
     .start()
 )
+
+query.awaitTermination()
