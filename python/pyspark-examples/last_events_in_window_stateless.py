@@ -56,7 +56,9 @@ mapSchema = StructType([
 temp_table_name = "last_events_in_window"
 checkpoint_table_name = "users.chen_guo.last_events_in_window"
 spark.createDataFrame([], mapSchema).createOrReplaceTempView(temp_table_name)
-lcsWindow = Window.partitionBy("name", window("timestamp", "30 seconds")).orderBy(desc("timestamp"))
+
+# lcsWindow = Window.partitionBy("name", window("timestamp", "30 seconds")).orderBy(desc("timestamp"))
+lcsWindow = Window.partitionBy("name").orderBy(desc("timestamp"))
 
 
 def keep_in_memory_map(micro_batch: DataFrame, batch_id: int) -> None:
