@@ -3,9 +3,6 @@ package chen.guo.udaf
 import org.apache.spark.sql.expressions.Aggregator
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession, functions}
 
-val spark = SparkSession.builder.appName("LatestEventByKey").getOrCreate()
-import spark.implicits._
-
 // Define a case class for the input data type
 case class InputRow(order: Long, data: Double)
 
@@ -13,6 +10,10 @@ case class InputRow(order: Long, data: Double)
 case class Buffer(var maxOrder: Long, var maxData: Double)
 
 object LatestEventByKey extends Aggregator[InputRow, Buffer, Double] {
+
+  val spark = SparkSession.builder.appName("LatestEventByKey").getOrCreate()
+
+  import spark.implicits._
 
   // A zero value for this aggregation. Should satisfy the property that any b + zero = b.
   def zero: Buffer = Buffer(0L, Double.MinValue)
@@ -44,23 +45,24 @@ object LatestEventByKey extends Aggregator[InputRow, Buffer, Double] {
 
   // Specify the Encoder for final output value type
   def outputEncoder: Encoder[Double] = Encoders.scalaDouble
+
+  val df = Seq(
+    (1, 10L, 100.0),
+    (1, 20L, 200.0),
+    (1, 15L, 150.0),
+    (2, 10L, 400.0),
+    (2, 25L, 100.0),
+    (2, 5L, 300.0)
+  ).toDF("id", "order", "data")
+
+  /**
+    * This solution below will fail due to serialization issue.
+    */
+  //val latestEventAggregator = LatestEventByKey.toColumn.name("max_order_data")
+  //df.groupBy("id").agg(latestEventAggregator($"order", $"data")).show()
+
+  df.createOrReplaceGlobalTempView("events")
+  spark.udf.register("latest_event", functions.udaf(LatestEventByKey))
+  spark.sql("SELECT id, latest_event(order, data) FROM global_temp.events group by id").show()
 }
 
-val df = Seq(
-  (1, 10L, 100.0),
-  (1, 20L, 200.0),
-  (1, 15L, 150.0),
-  (2, 10L, 400.0),
-  (2, 25L, 100.0),
-  (2, 5L, 300.0)
-).toDF("id", "order", "data")
-
-/**
-  * This solution below will fail due to serialization issue.
-  */
-//val latestEventAggregator = LatestEventByKey.toColumn.name("max_order_data")
-//df.groupBy("id").agg(latestEventAggregator($"order", $"data")).show()
-
-df.createOrReplaceGlobalTempView("events")
-spark.udf.register("latest_event", functions.udaf(LatestEventByKey))
-spark.sql("SELECT id, latest_event(order, data) FROM global_temp.events group by id").show()

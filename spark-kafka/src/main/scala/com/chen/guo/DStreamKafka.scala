@@ -1,17 +1,18 @@
 package com.chen.guo
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
-import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
+import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.util.LongAccumulator
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.util.parsing.json.JSON
+import scala.collection.JavaConverters._
 
 /**
   * Referenced https://www.qubole.com/blog/dstreams-vs-dataframes-two-flavors-of-spark-streaming/
@@ -53,10 +54,13 @@ object DStreamKafka extends App {
     // list with one element if everything is ok (Some(_)).
     .flatMap(record => {
       // Deserializing JSON using built-in Scala parser and converting it to a Message case class
-      JSON.parseFull(record).map(rawMap => {
-        val map = rawMap.asInstanceOf[Map[String, String]]
-        Message(map.get("platform").get, map.get("uid").get, map.get("key").get, map.get("value").get)
-      })
+      val mapper: ObjectMapper = new ObjectMapper()
+      mapper.readValue(record, classOf[java.util.Map[String, String]])
+        .asScala
+        .map(rawMap => {
+          val map = rawMap.asInstanceOf[Map[String, String]]
+          Message(map.get("platform").get, map.get("uid").get, map.get("key").get, map.get("value").get)
+        })
     })
 
   // Cache DStream now, it'll speed up most of the operations below

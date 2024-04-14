@@ -5,12 +5,14 @@ import org.apache.spark.sql.functions.{last, window}
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
 import org.apache.spark.sql.{DataFrame, Encoder, Encoders, SparkSession, functions}
 
-val spark = SparkSession.builder.appName("MyAverage").getOrCreate()
-import spark.implicits._
 
 case class Average(var sum: Long, var count: Long)
 
 object MyAverage extends Aggregator[Long, Average, Double] {
+  val spark = SparkSession.builder.appName("MyAverage").getOrCreate()
+
+  import spark.implicits._
+
   // A zero value for this aggregation. Should satisfy the property that any b + zero = b
   def zero: Average = Average(0L, 0L)
 
@@ -37,41 +39,40 @@ object MyAverage extends Aggregator[Long, Average, Double] {
 
   // Specifies the Encoder for the final output value type
   def outputEncoder: Encoder[Double] = Encoders.scalaDouble
+  // Register the function to access it
+  spark.udf.register("my_average", functions.udaf(MyAverage))
+
+  Seq(
+    ("1", 10L),
+    ("1", 20L),
+    ("1", 15L),
+    ("2", 10L),
+    ("2", 25L),
+    ("2", 5L)
+  ).toDF("name", "salary").createOrReplaceGlobalTempView("employees")
+
+  // Use case 1: in SQL statements
+  spark.sql("SELECT my_average(salary) as average_salary FROM global_temp.employees").show()
+  spark.sql("SELECT name, my_average(salary) FROM global_temp.employees group by name").show()
+
+
+  // Use case 2: in a streaming job
+  val input: DataFrame = null // Initialize it with a streaming DataFrame
+  val query: StreamingQuery =
+    input
+      .withWatermark("timestamp", "1 second")
+      .groupBy(
+        window($"timestamp", "20 seconds", "10 seconds"),
+        $"name")
+      .agg(Map("value" -> "my_average"))
+      .writeStream
+      .queryName("kafka-ingest2")
+      .outputMode(OutputMode.Append())
+      .option("numRows", 100)
+      .option("truncate", value = false) //To show the full column content
+      // .trigger(Trigger.ProcessingTime("10 seconds"))
+      .format("console")
+      .start()
+
+  query.awaitTermination()
 }
-
-// Register the function to access it
-spark.udf.register("my_average", functions.udaf(MyAverage))
-
-Seq(
-  ("1", 10L),
-  ("1", 20L),
-  ("1", 15L),
-  ("2", 10L),
-  ("2", 25L),
-  ("2", 5L)
-).toDF("name", "salary").createOrReplaceGlobalTempView("employees")
-
-// Use case 1: in SQL statements
-spark.sql("SELECT my_average(salary) as average_salary FROM global_temp.employees").show()
-spark.sql("SELECT name, my_average(salary) FROM global_temp.employees group by name").show()
-
-
-// Use case 2: in a streaming job
-val input: DataFrame = null // Initialize it with a streaming DataFrame
-val query: StreamingQuery =
-  input
-    .withWatermark("timestamp", "1 second")
-    .groupBy(
-      window($"timestamp", "20 seconds", "10 seconds"),
-      $"name")
-    .agg(Map("value" -> "my_average"))
-    .writeStream
-    .queryName("kafka-ingest2")
-    .outputMode(OutputMode.Append())
-    .option("numRows", 100)
-    .option("truncate", value = false) //To show the full column content
-    // .trigger(Trigger.ProcessingTime("10 seconds"))
-    .format("console")
-    .start()
-
-query.awaitTermination()

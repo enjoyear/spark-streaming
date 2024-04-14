@@ -1,6 +1,9 @@
 group 'com.chen.guo'
 version '1.0-SNAPSHOT'
 
+apply from: './gradle/scripts/jvm-args-java17.gradle'
+def jvmArgsJava17 = ext.jvmArgsJava17
+
 allprojects {
     apply plugin: 'java'
     apply plugin: 'scala'
@@ -20,32 +23,32 @@ allprojects {
                     spark     : '3.4.1']  // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
 
     dependencies {
-        compile "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
-        compile "org.apache.spark:spark-sql_${versions.scalaMajor}:${versions.spark}"
-        compile "org.apache.spark:spark-streaming_${versions.scalaMajor}:${versions.spark}"
+        implementation "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
+        implementation "org.apache.spark:spark-sql_${versions.scalaMajor}:${versions.spark}"
+        implementation "org.apache.spark:spark-streaming_${versions.scalaMajor}:${versions.spark}"
 
-        compile "org.apache.spark:spark-sql-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
-        compile "org.apache.spark:spark-streaming-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
-        //compile "org.apache.kafka:kafka-clients:2.7.0"
+        implementation "org.apache.spark:spark-sql-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
+        implementation "org.apache.spark:spark-streaming-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
+        //implementation "org.apache.kafka:kafka-clients:2.7.0"
 
         // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
         // can be tested through DeltaLakeLearn
-        compile "io.delta:delta-core_${versions.scalaMajor}:1.1.0"
+        implementation "io.delta:delta-core_${versions.scalaMajor}:1.1.0"
 
-        compile "org.scala-lang:scala-library:${versions.scala}"
-        compile "org.scala-lang:scala-reflect:${versions.scala}"
+        implementation "org.scala-lang:scala-library:${versions.scala}"
+        implementation "org.scala-lang:scala-reflect:${versions.scala}"
 
         // slf4j can print "org.apache.kafka" and "org.apache.spark" log for some reason
-//        compile "org.slf4j:slf4j-api:1.7.30"
-//        compile "org.slf4j:slf4j-simple:1.7.30"
-//        compile "org.apache.logging.log4j:log4j-api:2.11.2"
-//        compile "org.apache.logging.log4j:log4j-core:2.11.2"
+//        implementation "org.slf4j:slf4j-api:1.7.30"
+//        implementation "org.slf4j:slf4j-simple:1.7.30"
+//        implementation "org.apache.logging.log4j:log4j-api:2.11.2"
+//        implementation "org.apache.logging.log4j:log4j-core:2.11.2"
 
-        compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.2'
-        compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.2'
+        implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.2'
+        implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.2'
 
-        testCompile "org.scalatest:scalatest_${versions.scalaMajor}:3.2.5"
-        testCompile group: 'org.testng', name: 'testng', version: '7.4.0'
+        testImplementation "org.scalatest:scalatest_${versions.scalaMajor}:3.2.5"
+        testImplementation group: 'org.testng', name: 'testng', version: '7.4.0'
     }
 
     test {
@@ -54,5 +57,9 @@ allprojects {
         afterTest { desc, result ->
             logger.quiet "==> Test ${result.resultType}: ${desc.name} at ${desc.className}"
         }
+    }
+    compileJava {
+        options.release = 17
+        options.forkOptions.jvmArgs += jvmArgsJava17
     }
 }

@@ -1,6 +1,7 @@
 package com.chen.guo
 
 import com.chen.guo.constant.Constant
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.rdd.RDD
@@ -11,7 +12,7 @@ import org.apache.spark.streaming.kafka010._
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.util.parsing.json.JSON
+import scala.collection.JavaConverters._
 
 /**
   * See set up at [[com.chen.guo.kafka.KafkaSourceFileSink]]
@@ -48,11 +49,14 @@ object DStreamKafka2 extends App {
     // list with one element if everything is ok (Some(_)).
     .flatMap(record => {
       // Deserializing JSON using built-in Scala parser and converting it to a Message case class
-      JSON.parseFull(record).map(rawMap => {
-        val map = rawMap.asInstanceOf[Map[String, Object]]
-        println("Got map: " + map)
-        Example(map.getOrElse("emp_id", "n/a").toString, map.getOrElse("first_name", "n/a").toString, map.getOrElse("last_name", "n/a").toString)
-      })
+      val mapper: ObjectMapper = new ObjectMapper()
+      mapper.readValue(record, classOf[java.util.Map[String, String]])
+        .asScala
+        .map(rawMap => {
+          val map = rawMap.asInstanceOf[Map[String, Object]]
+          println("Got map: " + map)
+          Example(map.getOrElse("emp_id", "n/a").toString, map.getOrElse("first_name", "n/a").toString, map.getOrElse("last_name", "n/a").toString)
+        })
     })
 
   messages.print()
