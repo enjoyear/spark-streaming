@@ -20,19 +20,20 @@ allprojects {
 
     ext.versions = [scalaMajor: '2.12',
                     scala     : '2.12.12',
-                    spark     : '3.4.1']  // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
+                    spark     : '3.5.1']
 
     dependencies {
         implementation "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
         implementation "org.apache.spark:spark-sql_${versions.scalaMajor}:${versions.spark}"
         implementation "org.apache.spark:spark-streaming_${versions.scalaMajor}:${versions.spark}"
 
+        // Databricks protobuf API is not the same as the oss version
+        // implementation "org.apache.spark:spark-protobuf_${versions.scalaMajor}:${versions.spark}"
+
         implementation "org.apache.spark:spark-sql-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
         implementation "org.apache.spark:spark-streaming-kafka-0-10_${versions.scalaMajor}:${versions.spark}"
         //implementation "org.apache.kafka:kafka-clients:2.7.0"
 
-        // note that delta-core 0.8.0 isn't compatible with spark 3.1.1
-        // can be tested through DeltaLakeLearn
         implementation "io.delta:delta-core_${versions.scalaMajor}:1.1.0"
 
         implementation "org.scala-lang:scala-library:${versions.scala}"
