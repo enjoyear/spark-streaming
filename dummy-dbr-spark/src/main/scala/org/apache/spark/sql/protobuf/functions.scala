@@ -23,4 +23,10 @@ object functions {
                      options: java.util.Map[String, String]): Column = {
     new Column("dummy")
   }
+
+  @Experimental
+  def to_protobuf(data: Column, options: java.util.Map[String, String])
+  : Column = {
+    new Column("dummy")
+  }
 }
