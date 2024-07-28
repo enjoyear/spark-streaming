@@ -155,15 +155,18 @@ class StateUpdater(val windowSize: Long, val bucketWidth: Int) extends Serializa
                 } else if (order > 0) {
                   // the event needs to be inserted to the right of current bucket
                   /**
-                    * ListBuffer allows efficient removal of the head element, and appending of new elements.
+                    * ListBuffer gives O(1) time complexity for removing the head, and add to the tail
                     * https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#list-buffers
-                    * But it will take O(n) time to find the right place to insert a new bucket.
-                    * Ideally, a doubly-linked list will be more efficient for insertion in the middle. However,
-                    * such doubly-linked list collection is not available in Scala and the java version
-                    * {@link java.util.LinkedList} is not support in Spark.
-                    * The good thing is that insertion in the middle will not happen when there are no late arrival
-                    * events. Or, we set a low or 0 watermark threshold to drop most late arrival events to reduce
-                    * such operations.
+                    * But it takes O(n) to find the right place to insert a new bucket.
+                    *
+                    * The good thing is that insertion in the middle(most likely towards the end of the list) will not
+                    * happen when there is no late arrival events. Or, we set a low or 0 watermark threshold to drop
+                    * most late arrival events to reduce such operations.
+                    *
+                    * If frequent insertions cannot be avoided, we need to switch the implementation to use the Vector
+                    * class, which provides O(log32\N) time complexity for most operations: add/remove head,
+                    * add/remove tail, slice and concatenate. Alternatively, a customized doubly-linked list
+                    * implementation will achieve the best performance for APIs frequently used in this code.
                     */
                   newBucketSums.insert(insertIndex, SumByBucket(event.bucketStart, event.value))
                   newRunningSum += event.value
