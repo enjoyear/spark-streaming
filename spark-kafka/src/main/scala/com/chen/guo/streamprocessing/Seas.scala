@@ -245,7 +245,7 @@ object Seas {
   }
 
   val schema: StructType = StructType(Array(
-    StructField(columnId, IntegerType),
+    StructField(columnId, StringType),
     StructField(colTimestamp, TimestampType),
     StructField(colValue, IntegerType)
   ))
