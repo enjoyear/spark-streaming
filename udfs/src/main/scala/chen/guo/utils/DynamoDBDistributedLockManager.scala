@@ -13,29 +13,41 @@ import scala.concurrent.duration.DurationInt
 class DynamoDBDistributedLockManager extends Closeable {
   private val tableName = "databricks_cluster_deployment_locks"
   private val region: Region = Region.US_EAST_1
-  private val DEFAULT_LEASE_SECONDS = 20L
-  private val DEFAULT_ALLOWED_SECONDS_WITHOUT_HEARTBEATS = DEFAULT_LEASE_SECONDS - 2L
-  // How long to wait before trying to get the lock again
-  // e.g. if set to 10 seconds, it would attempt to do so every 10 seconds
-  private val DEFAULT_LOCK_ACQUIRE_REFRESH_SECONDS: Long = 5.seconds.toSeconds
+  private val DEFAULT_LOCK_LEASE_SECONDS = 22L
+  // The maximum time a lock can be held without heartbeats before it is considered lost from the
+  // coordinator's(DynamoDB) perspective
+  private val DEFAULT_LOCK_HOLD_ALLOWED_SECONDS_WITHOUT_HEARTBEATS = DEFAULT_LOCK_LEASE_SECONDS - 2L
+  // How long to wait before trying to acquire the lock again
+  // e.g. if set to 3 seconds, the follower, or new-lock acquirer, would attempt to acquire the lock so every 3 seconds
+  // Set to 3 seconds for the follower to quickly take over the lock during blue-green deployment
+  // When DEFAULT_LOCK_LEASE_SECONDS is set to 22 seconds, the follower can become the leader within maximum (22 + 3) seconds
+  private val DEFAULT_LOCK_ACQUIRE_RETRY_GAP_SECONDS: Long = 3.seconds.toSeconds
   // How long the follower waits in addition to the lease duration when trying to acquire the lock
-  // If set to 10 minutes, follower will try to acquire a lock for at least 10 minutes before giving up and
-  // throwing the exception
-  private val DEFAULT_FOLLOWER_ADDITIONAL_LOCK_ACQUIRE_SECONDS: Long = 10.minutes.toSeconds
-  private val DEFAULT_HEARTBEAT_SECONDS = 5.seconds.toSeconds
+  // If set to 10 minutes, follower will try to acquire a lock for about (10 minutes + DEFAULT_LOCK_LEASE_SECONDS)
+  // before giving up and throwing the exception
+  private val DEFAULT_LOCK_ACQUIRE_FOLLOWER_ADDITIONAL_TOTAL_RETRY_SECONDS: Long = 10.minutes.toSeconds
+  // Set to 6 seconds to reduce DynamoDB read costs
+  private val DEFAULT_LOCK_HOLD_HEARTBEAT_SECONDS = 6.seconds.toSeconds
 
   private val ddbclient: DynamoDbClient = DynamoDbClient.builder().region(region).build()
   private var lockClient: AmazonDynamoDBLockClient = _
 
   /**
-    * @param stirPath the path to the file that needs to be locked. This will be used as the DDB partition key.
+    * @param lockKey the path to the file that needs to be locked. This will be used as the DDB partition key.
     */
-  def tryAcquireLock(stirPath: String, sparkSession: SparkSession): Optional[LockItem] = {
+  def tryAcquireLock(lockKey: String,
+                     sparkSession: SparkSession,
+                     lockLeaseSeconds: Long = DEFAULT_LOCK_LEASE_SECONDS,
+                     lockHoldHeartbeatSeconds: Long = DEFAULT_LOCK_HOLD_HEARTBEAT_SECONDS,
+                     lockHoldAllowedSecondsWithoutHeartbeats: Long = DEFAULT_LOCK_HOLD_ALLOWED_SECONDS_WITHOUT_HEARTBEATS,
+                     lockAcquireRetryGapSeconds: Long = DEFAULT_LOCK_ACQUIRE_RETRY_GAP_SECONDS,
+                     lockAcquireFollowerAdditionalTotalRetrySeconds: Long = DEFAULT_LOCK_ACQUIRE_FOLLOWER_ADDITIONAL_TOTAL_RETRY_SECONDS
+                    ): Optional[LockItem] = {
     if (lockClient == null) {
       val options = AmazonDynamoDBLockClientOptions.builder(ddbclient, tableName)
         .withTimeUnit(TimeUnit.SECONDS)
-        .withLeaseDuration(DEFAULT_LEASE_SECONDS)
-        .withHeartbeatPeriod(DEFAULT_HEARTBEAT_SECONDS)
+        .withLeaseDuration(lockLeaseSeconds)
+        .withHeartbeatPeriod(lockHoldHeartbeatSeconds)
         .withCreateHeartbeatBackgroundThread(true)
         // When DynamoDB service is unavailable, all threads will get the same exception and no threads will have the lock.
         .withHoldLockOnServiceUnavailable(false)
@@ -53,13 +65,13 @@ class DynamoDBDistributedLockManager extends Closeable {
       }
     }
 
-    println(s"Try acquiring lock for $stirPath")
+    println(s"Try acquiring lock for $lockKey")
     val lockItem: Optional[LockItem] = lockClient.tryAcquireLock(AcquireLockOptions
-      .builder(stirPath)
+      .builder(lockKey)
       .withTimeUnit(TimeUnit.SECONDS)
-      .withRefreshPeriod(DEFAULT_LOCK_ACQUIRE_REFRESH_SECONDS)
-      .withAdditionalTimeToWaitForLock(DEFAULT_FOLLOWER_ADDITIONAL_LOCK_ACQUIRE_SECONDS)
-      .withSessionMonitor(DEFAULT_ALLOWED_SECONDS_WITHOUT_HEARTBEATS, Optional.of(lockEnterDangerZoneCallback))
+      .withRefreshPeriod(lockAcquireRetryGapSeconds)
+      .withAdditionalTimeToWaitForLock(lockAcquireFollowerAdditionalTotalRetrySeconds)
+      .withSessionMonitor(lockHoldAllowedSecondsWithoutHeartbeats, Optional.of(lockEnterDangerZoneCallback))
       .build()
     )
 
@@ -73,5 +85,18 @@ class DynamoDBDistributedLockManager extends Closeable {
     if (ddbclient != null) {
       ddbclient.close()
     }
+  }
+}
+
+object UseLockManager {
+  def main(args: Array[String]): Unit = {
+    val lockManager = new DynamoDBDistributedLockManager()
+    val lockItem = lockManager.tryAcquireLock("lockKey", null)
+    if (lockItem.isPresent) {
+      println("Lock acquired")
+    } else {
+      println("Failed to acquire lock")
+    }
+    lockManager.close()
   }
 }
