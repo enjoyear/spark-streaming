@@ -33,10 +33,12 @@ class DynamoDBDistributedLockManager extends Closeable {
   private var lockClient: AmazonDynamoDBLockClient = _
 
   /**
+    * A blocking call trying to acquire the distributed lock identified by "lockKey"
+    * The blocking duration is bounded by "lockLeaseSeconds" + "lockAcquireFollowerAdditionalTotalRetrySeconds"
     * @param lockKey the path to the file that needs to be locked. This will be used as the DDB partition key.
     */
   def tryAcquireLock(lockKey: String,
-                     sparkSession: SparkSession,
+                     sparkSession: Option[SparkSession],
                      lockLeaseSeconds: Long = DEFAULT_LOCK_LEASE_SECONDS,
                      lockHoldHeartbeatSeconds: Long = DEFAULT_LOCK_HOLD_HEARTBEAT_SECONDS,
                      lockHoldAllowedSecondsWithoutHeartbeats: Long = DEFAULT_LOCK_HOLD_ALLOWED_SECONDS_WITHOUT_HEARTBEATS,
@@ -57,15 +59,15 @@ class DynamoDBDistributedLockManager extends Closeable {
 
     val lockEnterDangerZoneCallback: Runnable = new Runnable() {
       override def run(): Unit = {
-        println("Executing lockEnterDangerZoneCallback")
-        if (sparkSession != null) {
-          sparkSession.close()
+        println("Lock is entering the danger zone")
+        if (sparkSession.isDefined) {
+          sparkSession.get.close()
         }
         Runtime.getRuntime.exit(1)
       }
     }
 
-    println(s"Try acquiring lock for $lockKey")
+    println(s"Trying to acquire the lock for '$lockKey'")
     val lockItem: Optional[LockItem] = lockClient.tryAcquireLock(AcquireLockOptions
       .builder(lockKey)
       .withTimeUnit(TimeUnit.SECONDS)
