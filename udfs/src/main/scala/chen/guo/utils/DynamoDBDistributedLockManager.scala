@@ -32,8 +32,18 @@ class DynamoDBDistributedLockManager extends Closeable {
   private val ddbclient: DynamoDbClient = DynamoDbClient.builder().region(region).build()
   private var lockClient: AmazonDynamoDBLockClient = _
 
+  /**
+    * To call such function in PySpark, you can use the following code:
+    * {{{
+    *   lock_item = spark._jvm.chen.guo.utils.DynamoDBDistributedLockManager().tryAcquireLock("xyz")
+    *   if lock_item.isPresent:
+    *     print("Lock acquired")
+    *   else:
+    *     print("Failed to acquire lock")
+    * }}}
+    * */
   def tryAcquireLock(lockKey: String): Optional[LockItem] = {
-    tryAcquireLock(lockKey, None)
+    tryAcquireLock(lockKey)
   }
 
   /**
@@ -43,14 +53,7 @@ class DynamoDBDistributedLockManager extends Closeable {
     * To call such function in PySpark, you can use the following code:
     *
     * {{{
-    *   jvm = spark._jvm
-    *   lock_manager = jvm.chen.guo.utils.DynamoDBDistributedLockManager()
-    *   # 1) Get the Scala 'None$' class object
-    *   none_class = getattr(jvm.scala, "None$")
-    *   # 2) Retrieve the singleton instance stored in the MODULE$ field
-    *   scala_none = getattr(none_class, "MODULE$")
-    *
-    *   lock_item = lock_manager.tryAcquireLock("bbb", scala_none, 22, 6, 20, 3, 600)
+    *   lock_item = spark._jvm.chen.guo.utils.DynamoDBDistributedLockManager().tryAcquireLock("xyz", 22, 6, 20, 3, 600)
     *   if lock_item.isPresent:
     *     print("Lock acquired")
     *   else:
@@ -61,7 +64,6 @@ class DynamoDBDistributedLockManager extends Closeable {
     *
     * */
   def tryAcquireLock(lockKey: String,
-                     sparkSession: Option[SparkSession],
                      lockLeaseSeconds: Long = DEFAULT_LOCK_LEASE_SECONDS,
                      lockHoldHeartbeatSeconds: Long = DEFAULT_LOCK_HOLD_HEARTBEAT_SECONDS,
                      lockHoldAllowedSecondsWithoutHeartbeats: Long = DEFAULT_LOCK_HOLD_ALLOWED_SECONDS_WITHOUT_HEARTBEATS,
@@ -83,8 +85,8 @@ class DynamoDBDistributedLockManager extends Closeable {
     val lockEnterDangerZoneCallback: Runnable = new Runnable() {
       override def run(): Unit = {
         println("Lock is entering the danger zone")
-        if (sparkSession.isDefined) {
-          sparkSession.get.close()
+        if (SparkSession.getActiveSession.isDefined) {
+          SparkSession.getActiveSession.get.close()
         }
         Runtime.getRuntime.exit(1)
       }
@@ -116,7 +118,7 @@ class DynamoDBDistributedLockManager extends Closeable {
 object UseLockManager {
   def main(args: Array[String]): Unit = {
     val lockManager = new DynamoDBDistributedLockManager()
-    val lockItem = lockManager.tryAcquireLock("lockKey", null)
+    val lockItem = lockManager.tryAcquireLock("lockKey")
     if (lockItem.isPresent) {
       println("Lock acquired")
     } else {
