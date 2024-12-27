@@ -32,11 +32,34 @@ class DynamoDBDistributedLockManager extends Closeable {
   private val ddbclient: DynamoDbClient = DynamoDbClient.builder().region(region).build()
   private var lockClient: AmazonDynamoDBLockClient = _
 
+  def tryAcquireLock(lockKey: String): Optional[LockItem] = {
+    tryAcquireLock(lockKey, None)
+  }
+
   /**
     * A blocking call trying to acquire the distributed lock identified by "lockKey"
     * The blocking duration is bounded by "lockLeaseSeconds" + "lockAcquireFollowerAdditionalTotalRetrySeconds"
+    *
+    * To call such function in PySpark, you can use the following code:
+    *
+    * {{{
+    *   jvm = spark._jvm
+    *   lock_manager = jvm.chen.guo.utils.DynamoDBDistributedLockManager()
+    *   # 1) Get the Scala 'None$' class object
+    *   none_class = getattr(jvm.scala, "None$")
+    *   # 2) Retrieve the singleton instance stored in the MODULE$ field
+    *   scala_none = getattr(none_class, "MODULE$")
+    *
+    *   lock_item = lock_manager.tryAcquireLock("bbb", scala_none, 22, 6, 20, 3, 600)
+    *   if lock_item.isPresent:
+    *     print("Lock acquired")
+    *   else:
+    *     print("Failed to acquire lock")
+    * }}}
+    *
     * @param lockKey the path to the file that needs to be locked. This will be used as the DDB partition key.
-    */
+    *
+    * */
   def tryAcquireLock(lockKey: String,
                      sparkSession: Option[SparkSession],
                      lockLeaseSeconds: Long = DEFAULT_LOCK_LEASE_SECONDS,
