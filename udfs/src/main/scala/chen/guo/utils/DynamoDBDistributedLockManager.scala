@@ -33,17 +33,24 @@ class DynamoDBDistributedLockManager extends Closeable {
   private var lockClient: AmazonDynamoDBLockClient = _
 
   /**
+    * This function is needed because the function with default arguments cannot be recognized from PySpark.
     * To call such function in PySpark, you can use the following code:
     * {{{
     *   lock_item = spark._jvm.chen.guo.utils.DynamoDBDistributedLockManager().tryAcquireLock("xyz")
-    *   if lock_item.isPresent:
+    *   if lock_item.isPresent():
     *     print("Lock acquired")
     *   else:
     *     print("Failed to acquire lock")
     * }}}
     * */
   def tryAcquireLock(lockKey: String): Optional[LockItem] = {
-    tryAcquireLock(lockKey)
+    tryAcquireLock(lockKey,
+      lockLeaseSeconds = DEFAULT_LOCK_LEASE_SECONDS,
+      lockHoldHeartbeatSeconds = DEFAULT_LOCK_HOLD_HEARTBEAT_SECONDS,
+      lockHoldAllowedSecondsWithoutHeartbeats = DEFAULT_LOCK_HOLD_ALLOWED_SECONDS_WITHOUT_HEARTBEATS,
+      lockAcquireRetryGapSeconds = DEFAULT_LOCK_ACQUIRE_RETRY_GAP_SECONDS,
+      lockAcquireFollowerAdditionalTotalRetrySeconds = DEFAULT_LOCK_ACQUIRE_FOLLOWER_ADDITIONAL_TOTAL_RETRY_SECONDS
+    )
   }
 
   /**
@@ -54,7 +61,7 @@ class DynamoDBDistributedLockManager extends Closeable {
     *
     * {{{
     *   lock_item = spark._jvm.chen.guo.utils.DynamoDBDistributedLockManager().tryAcquireLock("xyz", 22, 6, 20, 3, 600)
-    *   if lock_item.isPresent:
+    *   if lock_item.isPresent():
     *     print("Lock acquired")
     *   else:
     *     print("Failed to acquire lock")
