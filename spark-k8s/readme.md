@@ -18,39 +18,37 @@ helm repo update
 
 # Show all charts in a repo
 helm search repo spark-operator
-# Show details for a chart
-helm show values spark-operator/spark-operator
-helm show values spark-operator/spark-operator | grep -A 5 "image:"
 
-
-# Install the  
+# Install the Deployment and CRDs
 # First spark-operator → Helm release name
 # Second spark-operator → Helm repository alias
 # Third spark-operator → chart name within that repo
-helm install spark-operator spark-operator/sparkoperator \
-  --namespace spark-operator \
-  # a webhook is just an HTTP callback that the API server calls when certain events occur (like creating or updating a resource).
-  --set webhook.enable=true \
-  --set image.repository=openlake/spark-operator \
-  --set image.tag=3.1.1
-  # --set serviceAccounts.spark.name=spark \
+helm install spark-operator spark-operator/spark-operator --namespace spark-operator
 
+# To upgrade
+helm upgrade [RELEASE_NAME] spark-operator/spark-operator [flags]
+# To uninstall
+helm uninstall [RELEASE_NAME]
+# To list
 helm list --all-namespaces
 
-helm install spark-operator spark-operator/spark-operator \
-  --namespace spark-operator \
-  --set webhook.enable=true \
-  --set image.tag=v1beta2-1.6.2-3.5.0
+# Show details for a chart
+helm show values spark-operator/spark-operator
+# Look for image.registry, image.repository, image.tag, 
+helm show values spark-operator/spark-operator | grep -A 5 "image:"
+# To overwrite/provide parameters during install, see this example below to use [--set param.path=value]
+helm install spark-operator spark-operator/spark-operator --namespace spark-operator \
+  --set webhook.enable=true
+
 ```
 
 How to debug spark-operator failures
 ```
 kubectl get pods -n spark-operator 
-kubectl describe pod -n spark-operator spark-operator-controller-84f4d95b9c-fs76k
+kubectl describe pod -n spark-operator spark-operator-controller-7f5557c6cd-knlpn
 ```
 
-
-Deploy and monitor
+# Deploy a Spark job
 ```
 # Apply the Spark application
 kubectl apply -f spark-pi-example.yaml
@@ -68,28 +66,8 @@ kubectl logs spark-pi-driver
 kubectl describe sparkapplication spark-pi
 ```
 
-
-```
-kind get clusters
-kind delete cluster --name spark-k8s
-kind create cluster --name spark-k8s --config kind-spark.yaml
-
-
-# Each Kind cluster = 1 or more Docker containers (nodes):
-docker ps --filter "name=spark-k8s"
-docker restart spark-k8s-control-plane
-# If you have worker nodes
-docker restart spark-k8s-worker
-docker restart spark-k8s-worker2
-
-kubectl cluster-info --context kind-spark-k8s
-kubectl cluster-info
-kubectl get nodes
-# Not sure what to do next?
-# Check out https://kind.sigs.k8s.io/docs/user/quick-start/
-```
-
-2. Create a namespace + service account + RBAC for Spark driver
+# Others
+Create a namespace + service account + RBAC for Spark driver
 ```
 kubectl create ns spark
 kubectl -n spark create serviceaccount spark
@@ -98,7 +76,7 @@ kubectl create clusterrolebinding spark-rb \
   --serviceaccount=spark:spark
 ```
 
-3. Pick a multi-arch Spark image
+Pick a multi-arch Spark image
 Bitnami’s images are multi-arch and easy on M-series Macs
 ```
 # Pull once locally so kind can load it

@@ -4,8 +4,14 @@ brew install kind kubectl
 ```
 
 1. Create a kind cluster
+[Reference](https://kind.sigs.k8s.io/docs/user/quick-start/)
 ```bash
 kind create cluster --config ./k8s/kind-config.yaml --name prod-test
+
+# list all clusters
+kind get clusters
+# delete a cluster
+kind delete cluster --name prod-test
 
 # Get cluster info
 kubectl cluster-info --context kind-prod-test
@@ -13,6 +19,10 @@ kubectl cluster-info --context kind-prod-test
 
 2. Verify
 ```bash
+docker ps --filter "name=prod-test"
+# To manually introduce some interruptions
+docker restart prod-test-worker
+
 # Context is used to connect to different K8S clusters
 kubectl config current-context
 kubectl config get-contexts
@@ -52,5 +62,3 @@ kubectl get pod -n kubernetes-dashboard dashboard-metrics-scraper-5ffb7d645f-ttv
 # `kubectl apply` declares the desired state, and let K8S figure out how to achieve it 
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
 ```
-
-
