@@ -36,6 +36,15 @@ kubectl describe pod/my-app-pod-1234
 # Monitoring Resource Usage
 kubectl top pods
 kubectl top nodes
+
+# Log into a pod
+kubectl exec -n kubernetes-dashboard -it dashboard-metrics-scraper-5ffb7d645f-ttvb9 -- /bin/bash
+# See the running process
+kubectl get pod -n kubernetes-dashboard dashboard-metrics-scraper-5ffb7d645f-ttvb9 -o jsonpath='{.spec.containers[*].image}'
+# Check what command it's running
+kubectl get pod -n kubernetes-dashboard dashboard-metrics-scraper-5ffb7d645f-ttvb9 -o jsonpath='{.spec.containers[*].command}'
+# Get the args
+kubectl get pod -n kubernetes-dashboard dashboard-metrics-scraper-5ffb7d645f-ttvb9 -o jsonpath='{.spec.containers[*].args}'
 ```
 
 3. Install K8S Dashboard
