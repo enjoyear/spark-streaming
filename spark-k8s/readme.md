@@ -1,28 +1,54 @@
-Step 1: Install the Spark Operator
-The Spark Operator manages Spark applications as Kubernetes native resources. This is what many companies use in production.
+# Install the Spark Operator
 Helm is the package manager for Kubernetes, like apt or brew for Linux/macOS.
 * It manages Helm charts, which are pre-configured templates that describe how to deploy applications (pods, services, RBAC, etc.) onto a Kubernetes cluster.
 * A chart defines everything needed to run an app — images, configs, volumes, etc.
 ```bash
 brew install helm
+helm repo list
+
 kubectl create namespace spark-operator
 kubectl get namespaces
+```
 
+The Spark Operator manages Spark applications as Kubernetes native resources. 
+* [Reference](https://github.com/kubeflow/spark-operator)
+```bash
 helm repo add spark-operator https://kubeflow.github.io/spark-operator
 helm repo update
 
-# Install the operator
+# Show all charts in a repo
+helm search repo spark-operator
+# Show details for a chart
+helm show values spark-operator/spark-operator
+helm show values spark-operator/spark-operator | grep -A 5 "image:"
+
+
+# Install the  
 # First spark-operator → Helm release name
 # Second spark-operator → Helm repository alias
 # Third spark-operator → chart name within that repo
-helm install spark-operator spark-operator/spark-operator \
+helm install spark-operator spark-operator/sparkoperator \
   --namespace spark-operator \
   # a webhook is just an HTTP callback that the API server calls when certain events occur (like creating or updating a resource).
   --set webhook.enable=true \
   --set image.repository=openlake/spark-operator \
   --set image.tag=3.1.1
   # --set serviceAccounts.spark.name=spark \
+
+helm list --all-namespaces
+
+helm install spark-operator spark-operator/spark-operator \
+  --namespace spark-operator \
+  --set webhook.enable=true \
+  --set image.tag=v1beta2-1.6.2-3.5.0
 ```
+
+How to debug spark-operator failures
+```
+kubectl get pods -n spark-operator 
+kubectl describe pod -n spark-operator spark-operator-controller-84f4d95b9c-fs76k
+```
+
 
 Deploy and monitor
 ```
