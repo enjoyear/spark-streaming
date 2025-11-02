@@ -34,6 +34,8 @@ Without proxy:
 * Direct communication: https://127.0.0.1:6443 (API server address)
 
 ```bash
+# Create a local proxy server that acts as an application-level gateway between your local machine and the Kubernetes API server. 
+# It connects to the K8S cluster defined through current context `kubectl config get-contexts`
 kubectl proxy
 # Start proxy in background
 # kubectl proxy &

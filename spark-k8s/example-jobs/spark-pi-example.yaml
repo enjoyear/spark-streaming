@@ -15,22 +15,9 @@ spec:
   sparkVersion: 4.0.0
   sparkConf:
     "spark.kubernetes.executor.deleteOnTermination": "false" # Keep the executor pods after completion to inspect the logs
-  driver:
-    labels:
-      version: 4.0.0
-    cores: 1
-    memory: 512m
-    serviceAccount: spark-operator-spark
-    securityContext:
-      capabilities:
-        drop:
-        - ALL
-      runAsGroup: 185
-      runAsUser: 185
-      runAsNonRoot: true
-      allowPrivilegeEscalation: false
-      seccompProfile:
-        type: RuntimeDefault
+  sparkUIOptions:   # Doc: https://github.com/kubeflow/spark-operator/blob/master/docs/api-docs.md#sparkuiconfiguration
+    servicePort: 4040
+    serviceType: NodePort  # or LoadBalancer for cloud https://docs.cloud.google.com/kubernetes-engine/docs/concepts/service#:~:text=ClusterIP%20(default):%20Internal%20clients,need%20a%20stable%20IP%20address.
   executor:
     labels:
       version: 4.0.0

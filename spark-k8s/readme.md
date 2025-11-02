@@ -65,9 +65,6 @@ kubectl describe pod -n spark-operator spark-operator-controller-7f5557c6cd-knlp
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/heads/master/examples/spark-pi.yaml
 kubectl apply -f ./spark-k8s/example-jobs/spark-pi-example.yaml
 
-# Apply the Spark application
-kubectl apply -f spark-pi-example.yaml
-
 # Watch the pods being created
 kubectl get pods -w
 ```
@@ -75,11 +72,44 @@ kubectl get pods -w
 ## Check the Spark job
 ```bash
 # List the Spark applications
+# The Spark Operator only (re)submits on create or when the spec changes; an identical spec won’t trigger another run!
+# You need to delete the same application beforehand `kubectl delete sparkapplication <application_name>`
 kubectl get sparkapplications
-# Describe the Spark application
-kubectl describe sparkapplication <application_name>
+# Describe the Spark application to show what YAML file was submitted
+kubectl describe/delete sparkapplication <application_name>
+```
+
+The Spark Operator automatically creates a Kubernetes Service(`<name>-ui-svc`) for the Spark UI to provide:
+- [Doc](https://github.com/kubeflow/spark-operator/blob/master/docs/api-docs.md#sparkuiconfiguration)
+- Stable endpoint: Pod IPs are ephemeral and change if the pod restarts, but the Service ClusterIP remains stable
+- DNS resolution: The service gets a DNS name (spark-pi-ui-svc.default.svc.cluster.local)
+- Load balancing: If there were multiple driver pods (though unusual), the service could distribute traffic
+```
+# Information can also be found through `kubectl get/describe service spark-pi-ui-svc`
+
+Web UI Address:       10.96.236.122:4040    # This is the ClusterIP, only accessible within the cluster. That's why you need to port-forward below.
+                                            # The service below will still be available when the driver is still running
+Web UI Port:          4040                  
+Web UI Service Name:  spark-pi-ui-svc
+```
+The internal routing is: `Browser (port-forward)` → `Service (10.96.236.122:4040)` → `Driver Pod (10.244.2.7:4040)`
+- Pod IP can be found through `kubectl get pod spark-pi-driver -o wide`
+- To see node IPs `kubectl get nodes -o wide`
+```bash
+# Access the UI at http://localhost:4040 through port forwarding (LOCAL_PORT:REMOTE_PORT)
+# REMOTE_PORT: The port number that the spark-pi-ui-svc (and the underlying application in the pod) is listening on inside the Kubernetes cluster.
+kubectl port-forward service/spark-pi-ui-svc 4040:4040
+```
 
 
+
+
+
+
+
+
+
+```bash
 kubectl get pods --field-selector=status.phase=Succeeded
 # Get logs from the driver
 kubectl logs <pod_name>
