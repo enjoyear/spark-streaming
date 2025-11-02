@@ -1,9 +1,9 @@
-# Install the Spark Operator
+# Preparation
 Helm is the package manager for Kubernetes, like apt or brew for Linux/macOS.
 * It manages Helm charts, which are pre-configured templates that describe how to deploy applications (pods, services, RBAC, etc.) onto a Kubernetes cluster.
 * A chart defines everything needed to run an app — images, configs, volumes, etc.
-** [version (Chart Version)](https://github.com/kubeflow/spark-operator/blob/07e2981442d1ba793f6dae77a9443ea578c84a09/charts/spark-operator-chart/Chart.yaml#L23) is the version of Helm chart itself (the packaging/deployment code). This tracks changes to the chart's templates, configurations, and structure. 
-** [appVersion (Application Version)](https://github.com/kubeflow/spark-operator/blob/07e2981442d1ba793f6dae77a9443ea578c84a09/charts/spark-operator-chart/Chart.yaml#L25) is the version of actual application being deployed (the Spark Operator, the go binary/container that manages Spark applications in Kubernetes). Indicates which version of the Spark Operator software is running. The format could be `<API version (SparkApplication CRD version)>-<Spark Operator version>-<Apache Spark version it supports>`, e.g. `v1beta2-1.6.2-3.5.0`
+  - [version (Chart Version)](https://github.com/kubeflow/spark-operator/blob/07e2981442d1ba793f6dae77a9443ea578c84a09/charts/spark-operator-chart/Chart.yaml#L23) is the version of Helm chart itself (the packaging/deployment code). This tracks changes to the chart's templates, configurations, and structure. 
+  - [appVersion (Application Version)](https://github.com/kubeflow/spark-operator/blob/07e2981442d1ba793f6dae77a9443ea578c84a09/charts/spark-operator-chart/Chart.yaml#L25) is the version of actual application being deployed (the Spark Operator, the go binary/container that manages Spark applications in Kubernetes). Indicates which version of the Spark Operator software is running. The format could be `<API version (SparkApplication CRD version)>-<Spark Operator version>-<Apache Spark version it supports>`, e.g. `v1beta2-1.6.2-3.5.0`
 
 ```bash
 brew install helm
@@ -13,8 +13,15 @@ kubectl create namespace spark-operator
 kubectl get namespaces
 ```
 
-The Spark Operator manages Spark applications as Kubernetes native resources. 
-* [Reference](https://github.com/kubeflow/spark-operator)
+# Spark Operator
+[Reference](https://github.com/kubeflow/spark-operator)
+
+The Spark Operator manages Spark applications as Kubernetes native resources.
+The `spark-operator-spark` service account will also be created by the Spark Operator installation and has the necessary RBAC roles to:
+* Create and manage executor pods
+* Access pod information
+* Create services for the UI
+
 ```bash
 helm repo add spark-operator https://kubeflow.github.io/spark-operator
 helm repo update
@@ -50,17 +57,34 @@ helm get values spark-operator -n spark-operator --all
 helm get values spark-operator -n spark-operator
 ```
 
-Check chart files
+## Check Chart Files
 * https://github.com/kubeflow/spark-operator/tree/master/charts/spark-operator-chart
 Or they can be downloaded locally through `helm pull spark-operator/spark-operator --untar`
 
-Debug spark-operator installment failures
-```
-kubectl get pods -n spark-operator 
-kubectl describe pod -n spark-operator spark-operator-controller-7f5557c6cd-knlpn
+## Check Role Permission
+RBAC based ACL management
+```bash
+# Find RoleBindings in the current namespace
+# The RoleBindings shows the linkages between `roleRef` and `subjects`(service accounts, etc)
+kubectl get rolebinding -o json
+kubectl describe rolebinding spark-operator-spark
+# Find ClusterRoleBindings (cluster-wide permissions)
+kubectl get clusterrolebinding -o json
+
+# To find the ROLE bound to a SERVICE ACCOUNT
+# kubectl get rolebindings --namespace=<namespace> -o json | jq '.items[] | select(.subjects[]? | .name == "<service-account-name>") | .roleRef.name'
+# kubectl get clusterrolebindings -o json | jq '.items[] | select(.subjects[]? | .name == "<service-account-name>" and .subjects[]?.namespace == "<namespace>") | .roleRef.name'
+kubectl get rolebindings --namespace=default -o json | jq '.items[] | select(.subjects[]? | .name == "spark-operator-spark") | .roleRef.name'
+
+
+# Check the permissions assigned to a role
+kubectl get role spark-operator-spark -o json # within the same specific namespace
+kubectl auth can-i create pods --as=system:serviceaccount:default:spark-operator-spark
+# For a ClusterRole
+kubectl get clusterrole <role-name> -o yaml  # can be accessed across different namespaces in the cluster
 ```
 
-# Deploy a Spark job
+# Submit a Spark job
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/heads/master/examples/spark-pi.yaml
 kubectl apply -f ./spark-k8s/example-jobs/spark-pi-example.yaml
@@ -111,9 +135,6 @@ kubectl port-forward service/spark-pi-ui-svc 4040:4040
 
 ```bash
 kubectl get pods --field-selector=status.phase=Succeeded
-# Get logs from the driver
-kubectl logs <pod_name>
-
 # 
 kubectl delete pods --field-selector=status.phase=Succeeded -l spark-role=driver
 ```
@@ -123,17 +144,10 @@ Create a namespace + service account + RBAC for Spark driver
 ```bash
 # Check images cached on each Node
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .status.images[*]}:{.names}{"\n"}{end}{end}'
-
-kubectl create ns spark
-kubectl -n spark create serviceaccount spark
-kubectl create clusterrolebinding spark-rb \
-  --clusterrole=edit \
-  --serviceaccount=spark:spark
 ```
-
 Pick a multi-arch Spark image
 Bitnami’s images are multi-arch and easy on M-series Macs
-```
+```bash
 # Pull once locally so kind can load it
 docker pull bitnamilegacy/spark:3.5.3
 kind load docker-image bitnamilegacy/spark:3.5.3 --name spark-k8s
