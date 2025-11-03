@@ -28,12 +28,27 @@ spec:
       capabilities:
         drop:
         - ALL
-      runAsGroup: 185
+      runAsGroup: 185  # `docker run --rm docker.io/library/spark:4.0.0 id` output: uid=185(spark) gid=185(spark) groups=185(spark)
+                       # The uid and gid are fixed at image build time, which is saved as below
+                       # docker run --rm docker.io/library/spark:4.0.0 cat /etc/group | grep spark
+                       # docker run --rm docker.io/library/spark:4.0.0 cat /etc/passwd | grep spark
+                       # If to run as higher permission: `runAsUser: 0`, `runAsGroup: 0` (root) and allowPrivilegeEscalation: true to allow root
+                       # But Spark image tries to run as spark.
       runAsUser: 185
       runAsNonRoot: true
       allowPrivilegeEscalation: false
       seccompProfile:
         type: RuntimeDefault
+    volumeMounts:
+    - name: spark-events
+      mountPath: /tmp/spark-events
+    initContainers:
+    - name: create-event-log-dir
+      image: busybox:1.36
+      command: ['sh', '-c', 'mkdir -p /tmp/spark-events && chown -R 185:185 /tmp/spark-events && chmod 755 /tmp/spark-events']
+      volumeMounts:
+      - name: spark-events
+        mountPath: /tmp/spark-events
   executor:
     labels:
       version: 4.0.0
@@ -50,3 +65,17 @@ spec:
       allowPrivilegeEscalation: false
       seccompProfile:
         type: RuntimeDefault
+    volumeMounts:
+    - name: spark-events
+      mountPath: /tmp/spark-events
+    initContainers:
+    - name: create-event-log-dir
+      image: busybox:1.36
+      command: ['sh', '-c', 'mkdir -p /tmp/spark-events && chown -R 185:185 /tmp/spark-events && chmod 755 /tmp/spark-events']
+      volumeMounts:
+      - name: spark-events
+        mountPath: /tmp/spark-events
+  volumes:
+  - name: spark-events   # a local name for this SparkApplication
+    persistentVolumeClaim:
+      claimName: spark-events-pvc  # This REFERENCES the existing PVC

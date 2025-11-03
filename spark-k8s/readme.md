@@ -148,6 +148,8 @@ kubectl get pvc
 
 # Check the files
 docker exec -it prod-test-worker /bin/bash
+
+kubectl exec spark-pi-driver -- ls -la /tmp/spark-events/
 ```
 
 ### Understanding the internals
@@ -167,10 +169,12 @@ WaitForFirstConsumer:
 
 
 
-
+## Debug the failure
 ```bash
+kubectl logs spark-pi-driver
+kubectl describe sparkapplication spark-pi
+
 kubectl get pods --field-selector=status.phase=Succeeded
-# 
 kubectl delete pods --field-selector=status.phase=Succeeded -l spark-role=driver
 ```
 
