@@ -1,4 +1,4 @@
-Create an Admin User
+# Create admin user for k8s dashboard
 ```bash
 kubectl apply -f ./k8s/users/admin-user.yaml
 ```

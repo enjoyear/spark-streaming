@@ -14,7 +14,9 @@ spec:
   - "5000"
   sparkVersion: 4.0.0
   sparkConf:
-    "spark.kubernetes.executor.deleteOnTermination": "false" # Keep the executor pods after completion to inspect the logs
+    spark.kubernetes.executor.deleteOnTermination: "false" # Keep the executor pods after completion to inspect the logs
+    spark.eventLog.enabled: "true"
+    spark.eventLog.dir: "file:///tmp/spark-events"
   driver:
     labels:
       version: 4.0.0

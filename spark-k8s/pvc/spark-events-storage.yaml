@@ -1,0 +1,28 @@
+# spark-events-storage.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: spark-events-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany # allows a Persistent Volume (PV) to be mounted in read-write mode by multiple nodes simultaneously
+  persistentVolumeReclaimPolicy: Retain # keep the PV and physical storage and data intact even the corresponding PVC is deleted
+  storageClassName: "manual"  # Custom name
+  hostPath: # Create a PV and PVC using hostPath, which maps to the kind node's filesystem:
+    path: /tmp/spark-events
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-events-pvc
+  namespace: default  # Change to your namespace
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "manual"  # Must match PV. Default is `standard`
+  resources:
+    requests:
+      storage: 5Gi

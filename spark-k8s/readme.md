@@ -62,7 +62,20 @@ helm get values spark-operator -n spark-operator
 Or they can be downloaded locally through `helm pull spark-operator/spark-operator --untar`
 
 ## Check Role Permission
-RBAC based ACL management
+RBAC based ACL management.
+Minimal permissions a Spark driver needs:
+```yaml
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "create", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "create", "delete"]
+```
 ```bash
 # Find RoleBindings in the current namespace
 # The RoleBindings shows the linkages between `roleRef` and `subjects`(service accounts, etc)
@@ -122,12 +135,34 @@ The internal routing is: `Browser (port-forward)` → `Service (10.96.236.122:40
 ```bash
 # Access the UI at http://localhost:4040 through port forwarding (LOCAL_PORT:REMOTE_PORT)
 # REMOTE_PORT: The port number that the spark-pi-ui-svc (and the underlying application in the pod) is listening on inside the Kubernetes cluster.
+# This only works when the driver pod is alive
 kubectl port-forward service/spark-pi-ui-svc 4040:4040
 ```
 
+## Spark History Server
+```bash
+# Create PersistentVolumeClaim
+kubectl apply -f ./spark-k8s/pvc/spark-events-storage.yaml
+kubectl get pv
+kubectl get pvc
 
+# Check the files
+docker exec -it prod-test-worker /bin/bash
+```
 
+### Understanding the internals
+Dynamic vs Static Provisioning:
+* storageClassName: `standard` tells K8s to use the dynamic provisioner (kind's local-path-provisioner)
+* Dynamic provisioner creates PVs automatically when you create a PVC
+* The manually created PV has no storageClassName, so it's for static provisioning
 
+Binding Logic:
+* K8s only binds PV and PVC if their storageClassNames match exactly
+* Setting both to "" or the same string tells K8s: "use static/manual binding, not dynamic"
+
+WaitForFirstConsumer:
+* The "waiting for first consumer" message is from the dynamic provisioner
+* It's waiting for a pod to use the PVC before creating the PV
 
 
 

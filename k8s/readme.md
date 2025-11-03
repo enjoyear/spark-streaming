@@ -22,6 +22,8 @@ kubectl cluster-info --context kind-prod-test
 docker ps --filter "name=prod-test"
 # To manually introduce some interruptions
 docker restart prod-test-worker
+# Inspect a container
+docker inspect prod-test-worker
 
 # Context is used to connect to different K8S clusters
 kubectl config current-context
