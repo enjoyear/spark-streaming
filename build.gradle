@@ -4,10 +4,24 @@ version '1.0-SNAPSHOT'
 apply from: './gradle/scripts/jvm-args-java17.gradle'
 def jvmArgsJava17 = ext.jvmArgsJava17
 
+buildscript {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    dependencies {
+        // Pick version compatible with your Gradle (see note below)
+        classpath "gradle.plugin.com.github.johnrengelman:shadow:7.1.2" // for Gradle 7.x
+        classpath "com.google.protobuf:protobuf-gradle-plugin:0.9.4"    // 0.9.x works on Gradle 7.x
+    }
+}
+
 allprojects {
     apply plugin: 'java'
     apply plugin: 'scala'
     apply plugin: 'idea'
+    apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: 'com.google.protobuf'
 
     //install Java 11(jdk-11.0.10_osx-x64_bin.dmg) at https://www.oracle.com/java/technologies/javase-jdk11-downloads.html#license-lightbox
     //set JAVA_HOME in .bashrc:    export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.10.jdk/Contents/Home
@@ -18,9 +32,11 @@ allprojects {
         mavenCentral()
     }
 
-    ext.versions = [scalaMajor: '2.12',
-                    scala     : '2.12.12',
-                    spark     : '3.5.1']
+    ext.versions = [scalaMajor     : '2.13',
+                    scala          : '2.13.17',
+                    spark          : '4.0.0',
+                    protobufVersion: '3.19.2',
+                    grpcVersion    : '1.73.0']
 
     dependencies {
         implementation "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
@@ -38,6 +54,8 @@ allprojects {
 
         implementation "org.scala-lang:scala-library:${versions.scala}"
         implementation "org.scala-lang:scala-reflect:${versions.scala}"
+
+        implementation "com.google.protobuf:protobuf-java:${versions.protobufVersion}"
 
         // slf4j can print "org.apache.kafka" and "org.apache.spark" log for some reason
 //        implementation "org.slf4j:slf4j-api:1.7.30"
@@ -62,5 +80,72 @@ allprojects {
     compileJava {
         options.release = 17
         options.forkOptions.jvmArgs += jvmArgsJava17
+    }
+
+    protobuf {
+        // protoc executable
+        protoc {
+            // download from repo
+            artifact = "com.google.protobuf:protoc:${versions.protobufVersion}"
+        }
+        plugins {
+            grpc {
+                artifact = "io.grpc:protoc-gen-grpc-java:${versions.grpcVersion}"
+            }
+        }
+        generateProtoTasks {
+            // all() returns the collection of all protoc tasks
+            all().each { task ->
+                // If true, will generate a descriptor_set.desc file under
+                // task.outputBaseDir. Default is false.
+                // See --descriptor_set_out in protoc documentation about what it is.
+                task.generateDescriptorSet = true
+
+                // Allows to override the default for the descriptor set location
+                task.descriptorSetOptions.path =
+                        "${projectDir}/build/descriptors/${task.sourceSet.name}.desc"
+
+                // If true, the descriptor set will contain line number information
+                // and comments. Default is false.
+                task.descriptorSetOptions.includeSourceInfo = false
+
+                // If true, the descriptor set will contain all transitive imports and
+                // is therefore self-contained. Default is false.
+                task.descriptorSetOptions.includeImports = true
+                task.builtins {
+                    java {}
+                }
+                task.plugins {
+                    grpc {}
+                }
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            proto {
+                // In addition to the default 'src/main/proto'
+                srcDir "${projectDir}/src/main/protobuf"
+                srcDir "${projectDir}/src/main/protocolbuffers"
+            }
+            java {
+                srcDirs "${protobuf.generatedFilesBaseDir}/main/grpc"
+                srcDirs "${protobuf.generatedFilesBaseDir}/main/java"
+            }
+        }
+        test {
+            proto {
+                srcDir "${projectDir}/src/test/resources/protobuf"
+            }
+            java {
+                srcDirs "${protobuf.generatedFilesBaseDir}/test/java"
+            }
+        }
+    }
+
+    shadowJar {
+        mergeServiceFiles()
+        relocate('com.google', 'chen.guo.com.google')
     }
 }

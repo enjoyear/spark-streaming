@@ -7,11 +7,13 @@ import org.apache.spark.sql.functions._
 object WordCountEMR extends App {
   val spark = SparkSession
     .builder
+    // .master("local[*]")
     .appName("WordCount")
     .getOrCreate()
   spark.sparkContext.setLogLevel("WARN")
 
   val inputPath = "s3a://chen-guo-test/test/input/word-count.txt"
+  // val inputPath = "file:///Users/chenguo/src/chen/spark-streaming/build.gradle"
 
   val data: RDD[String] = spark.sparkContext.textFile(inputPath)
   //Print out the RDD to verify that file can be loaded correctly
