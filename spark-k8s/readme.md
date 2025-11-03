@@ -141,13 +141,21 @@ kubectl port-forward service/spark-pi-ui-svc 4040:4040
 
 ## Spark History Server
 ```bash
-# Create PersistentVolumeClaim
+# Create PersistentVolumeClaim first, then start the spark application
 kubectl apply -f ./spark-k8s/pvc/spark-events-storage.yaml
 kubectl get pv
 kubectl get pvc
 
-# Check the files
-docker exec -it prod-test-worker /bin/bash
+# Deploy the History Server
+kubectl apply -f ./spark-k8s/spark-history-server.yaml
+kubectl get pods -l app=spark-history-server
+
+# Check the spark history files
+# Log into the pod where the Spark driver run
+docker exec -it prod-test-worker2 /bin/bash
+ls /tmp/spark-events
+# http://localhost:18080/
+kubectl port-forward service/spark-history-server 18080:18080
 
 kubectl exec spark-pi-driver -- ls -la /tmp/spark-events/
 ```
