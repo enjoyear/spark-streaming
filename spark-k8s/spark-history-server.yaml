@@ -6,12 +6,18 @@ metadata:
 spec:
   replicas: 1
   selector:
-    matchLabels:
+    matchLabels: # This tells the Deployment controller which Pods it should manage.
+                 # It's a selector - the Deployment uses labels as a query to find and track "its" Pods.
+                 # The crucial requirement: selector.matchLabels must be a subset of template.metadata.labels
+                 # selector.matchLabels is immutable after Deployment creation
       app: spark-history-server
   template:
     metadata:
-      labels:
+      labels: # These are the actual labels that get applied to each Pod created by this Deployment.
+              # When the Deployment creates a Pod, it stamps these labels onto the Pod's metadata.
         app: spark-history-server
+        version: v1            # Extra label for versioning
+        team: data-platform    # Extra label for organization
     spec:
       # Need to deploy on the same node as the Spark driver which writes the events to the PVC
       nodeSelector:
@@ -44,8 +50,14 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 18080
-    targetPort: 18080
+  - port: 18080   # Port on the service itself - where other things in the cluster reach your service.
+                  # When something wants to talk to your history server, they connect to:
+                  # spark-history-server.default.svc.cluster.local:18080
+    targetPort: 18080   # Port on the container where the application is actually listening.
+                        # Service forwards traffic to this port on the selected Pods.
+                        # Can also be configured as a named port, e.g. "http" which references the template.spec.containers[0].ports
+                        # Named port is useful when you have multiple containers with different ports, or
+                        # want to change the container port without updating the service.
     name: http
-  selector:
+  selector:   # The service also uses selector to find Pods
     app: spark-history-server
