@@ -12,8 +12,8 @@ object WordCountEMR extends App {
     .getOrCreate()
   spark.sparkContext.setLogLevel("WARN")
 
-  val inputPath = "s3a://chen-guo-test/test/input/word-count.txt"
-  // val inputPath = "file:///Users/chenguo/src/chen/spark-streaming/build.gradle"
+  // val inputPath = "s3a://chen-guo-test/test/input/word-count.txt"
+  val inputPath = "file:///etc/passwd"
 
   val data: RDD[String] = spark.sparkContext.textFile(inputPath)
   //Print out the RDD to verify that file can be loaded correctly

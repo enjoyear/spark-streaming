@@ -30,8 +30,8 @@ allprojects {
     ext.versions = [scalaMajor     : '2.13',
                     scala          : '2.13.17',
                     spark          : '4.0.0',
-                    protobufVersion: '3.19.2',
-                    grpcVersion    : '1.73.0']
+                    protobufVersion: '3.25.8',
+                    grpcVersion    : '1.76.0']
 
     dependencies {
         implementation "org.apache.spark:spark-core_${versions.scalaMajor}:${versions.spark}"
@@ -124,7 +124,6 @@ allprojects {
             proto {
                 // In addition to the default 'src/main/proto'
                 srcDir "${projectDir}/src/main/protobuf"
-                srcDir "${projectDir}/src/main/protocolbuffers"
             }
             java {
                 srcDirs "${protobuf.generatedFilesBaseDir}/main/grpc"
@@ -143,6 +142,6 @@ allprojects {
 
     shadowJar {
         mergeServiceFiles()
-        relocate('com.google', 'chen.guo.com.google')
+        relocate('com.google.common', 'chen.guo.shadow.com.google.common')
     }
 }
