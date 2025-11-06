@@ -5,6 +5,9 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
 object WordCountEMR extends App {
+  val argumentList: Array[String] = args
+  argumentList.foreach(arg => println(s"Received argument: $arg"))
+
   val spark = SparkSession
     .builder
     // .master("local[*]")

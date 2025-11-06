@@ -9,7 +9,7 @@ spec:
   image: docker.io/library/spark:4.0.0
   imagePullPolicy: IfNotPresent
   mainClass: com.chen.guo.WordCountEMR
-  mainApplicationFile: local:///opt/spark-work-dir/word-count.jar
+  mainApplicationFile: local:///opt/spark-work-dir/word-count.jar  # the Jar file need to be uploaded/mounted to this location
   arguments:
   - "file:///etc/passwd"
   sparkVersion: 4.0.0
@@ -20,6 +20,9 @@ spec:
   driver:
     labels:
       version: 4.0.0
+    env:
+      - name: RUN_ID
+        value: "1730936400"  # <-- we can patch a harmless change here to force kubectl resubmit
     cores: 1
     memory: 512m
     serviceAccount: spark-operator-spark
