@@ -85,9 +85,15 @@ docker exec -it prod-test-worker crictl images | grep spark-wordcount
 crictl pods
 crictl ps -a
 
+# list all layers of an image
+docker history spark:4.0.0
+# to dive deeper into layer content
+brew install dive
+dive spark:4.0.0
+
 # Check docker container disk usage
 docker system df -v
-docker inspect docker inspect prod-test-worker --format '{{json .Mounts}}' | jq
+docker inspect prod-test-worker --format '{{json .Mounts}}' | jq
 ```
 
 debugging commands
