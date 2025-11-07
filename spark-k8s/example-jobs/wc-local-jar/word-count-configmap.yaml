@@ -1,10 +1,10 @@
 apiVersion: sparkoperator.k8s.io/v1beta2
 kind: SparkApplication
 metadata:
-  name: spark-pi
+  name: spark-wordcount
   namespace: default
 spec:
-  type: Java # running a Java/Scala application from a JAR
+  type: Java # both Java and Scala should work? to run an application from JAR
   mode: cluster
   image: docker.io/library/spark:4.0.0
   imagePullPolicy: IfNotPresent

@@ -213,6 +213,8 @@ Create a namespace + service account + RBAC for Spark driver
 ```bash
 # Check images cached on each Node
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .status.images[*]}:{.names}{"\n"}{end}{end}'
+# Or using the Container Runtime Interface
+docker exec -it prod-test-worker crictl images
 ```
 Pick a multi-arch Spark image
 Bitnami’s images are multi-arch and easy on M-series Macs
