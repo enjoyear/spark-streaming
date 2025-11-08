@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter-spark
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jupyter-spark
+  template:
+    metadata:
+      labels:
+        app: jupyter-spark
+    spec:
+      serviceAccountName: jupyter-spark
+      containers:
+        - name: jupyter
+          image: jupyter/pyspark-notebook:latest
+          ports:
+            - containerPort: 8888
+          env:
+            - name: JUPYTER_ENABLE_LAB
+              value: "yes"
+            - name: GRANT_SUDO
+              value: "yes"
+          volumeMounts:
+            - name: jupyter-data
+              mountPath: /home/jovyan/work
+      volumes:
+        - name: jupyter-data
+          persistentVolumeClaim:
+            claimName: jupyter-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-spark-service
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: jupyter-spark
+  ports:
+    - port: 8888
+      targetPort: 8888
+      nodePort: 30888
