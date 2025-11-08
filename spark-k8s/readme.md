@@ -154,7 +154,7 @@ kubectl get pvc
 # 3. Old ReplicaSet scales down to 0 (hash: 7ddd8f65f4)
 # 4. Old ReplicaSet kept for rollback capability
 # 5. After 10(default) updates, oldest ReplicaSet deleted automatically
-kubectl apply -f ./spark-k8s/spark-history-server.yaml
+kubectl apply -f ./spark-k8s/spark-history-server/spark-history-server.yaml
 # Check rollout status
 kubectl rollout status deployment/spark-history-server
 # Some changes (like environment variables) trigger automatic rollout, but others might not. To force a restart:

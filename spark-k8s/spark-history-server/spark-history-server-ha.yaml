@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-server
+  namespace: default
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate  # RollingUpdate is actually the default setting. During an update you'd have old version pods with their cached index, and
+                         # new version pods rebuilding their index. Users might see inconsistent application lists mid-update.
+                         # 1. New pod created alongside old pod
+                         # 2. New pod becomes ready
+                         # 3. Old pod terminated
+                         # 4. No downtime, but temporarily have both versions running
+  selector:
+    matchLabels:
+      app: spark-history-server
+  template:
+    metadata:
+      labels: # These are the actual labels that get applied to each Pod created by this Deployment.
+              # When the Deployment creates a Pod, it stamps these labels onto the Pod's metadata.
+        app: spark-history-server
+        version: v1            # Extra label for versioning
+        team: data-platform    # Extra label for organization
+    spec:
+      containers:
+      - name: spark-history-server
+        image: docker.io/library/spark:4.0.0
+        command: ["/opt/spark/sbin/start-history-server.sh"]
+        # The sequence of events for a new container is:
+        # 1. The container starts. The liveness and readiness probes are suspended and do not run.
+        # 2. The startupProbe begins, and continues until it succeeds, which indicates the application has finished its startup process.
+        # 3. Once the startupProbe succeeds, Kubernetes disables it.
+        # 4. The liveness and readiness probes are activated. Their respective initialDelaySeconds values are applied before first checks begin.
+        # This mechanism ensures that a slow-starting application isn't prematurely killed by a liveness probe or marked as unhealthy by a readiness probe.
+        # The initialDelaySeconds for the liveness and readiness probes only become relevant after the startupProbe has successfully completed.
+        readinessProbe: # Readiness probes runs on the container during its WHOLE lifecycle. 
+                        # ReadinessProbe and livenessProbe run independently and concurrently throughout the container's lifecycle.
+                        # It determines if a container is ready to accept network traffic.
+          httpGet:
+            path: /
+            port: 18080
+          initialDelaySeconds: 30 # Number of seconds after the container has started before probes are initiated for the first time
+          periodSeconds: 5
+          failureThreshold: 1   # Typically Lower (e.g., 1 or 2) to be sensitive before stopping receiving traffic
+        livenessProbe: # starts after startupProbe if configured. It determines if a container is healthy and should be kept alive
+                       # It decides when to restart a container that is failed or unresponsive (e.g., a deadlock) to 
+                       # automatically self-heal based on restartPolicy
+          httpGet:
+            path: /
+            port: 18080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1       # Wait up to 1 second for a response to determine failure
+          failureThreshold: 5     # Typically higher (e.g., 5+) for more tolerance before restarting container
+        env:
+        - name: SPARK_NO_DAEMONIZE
+          value: "true"
+        - name: SPARK_HISTORY_OPTS
+          value: "-Dspark.history.fs.logDirectory=file:///tmp/spark-events"
+        ports:
+        - containerPort: 18080
+          name: http
+        volumeMounts:
+        - name: spark-events
+          mountPath: /tmp/spark-events
+      volumes:
+      - name: spark-events
+        persistentVolumeClaim:
+          claimName: spark-events-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history-server
+  namespace: default
+spec:
+  type: ClusterIP  # default service type that defines a service only reachable from within the Kubernetes cluster
+  sessionAffinity: ClientIP # This ensures that all subsequent connections originating from a specific client IP address are consistently 
+                            # routed to the same backend Pod for a defined duration
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours
+  ports:
+  - port: 18080
+    targetPort: 18080
+    name: http
+  selector:   # The service also uses selector to find Pods
+    app: spark-history-server
