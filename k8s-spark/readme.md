@@ -100,7 +100,7 @@ kubectl get clusterrole <role-name> -o yaml  # can be accessed across different 
 # Submit a Spark job
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/heads/master/examples/spark-pi.yaml
-kubectl apply -f ./spark-k8s/example-jobs/spark-pi-example.yaml
+kubectl apply -f ./k8s-spark/example-jobs/spark-pi-example.yaml
 
 # Watch the pods being created
 kubectl get pods -w
@@ -142,7 +142,7 @@ kubectl port-forward service/spark-pi-ui-svc 4040:4040
 ## Spark History Server
 ```bash
 # Create PersistentVolumeClaim first, then start the spark application
-kubectl apply -f ./spark-k8s/pvc/spark-events-storage.yaml
+kubectl apply -f ./k8s-spark/pvc/spark-events-storage.yaml
 kubectl get pv
 kubectl get pvc
 
@@ -154,7 +154,7 @@ kubectl get pvc
 # 3. Old ReplicaSet scales down to 0 (hash: 7ddd8f65f4)
 # 4. Old ReplicaSet kept for rollback capability
 # 5. After 10(default) updates, oldest ReplicaSet deleted automatically
-kubectl apply -f ./spark-k8s/spark-history-server/spark-history-server.yaml
+kubectl apply -f ./k8s-spark/spark-history-server/spark-history-server.yaml
 # Check rollout status
 kubectl rollout status deployment/spark-history-server
 # Some changes (like environment variables) trigger automatic rollout, but others might not. To force a restart:
@@ -221,5 +221,5 @@ Bitnami’s images are multi-arch and easy on M-series Macs
 ```bash
 # Pull once locally so kind can load it
 docker pull bitnamilegacy/spark:3.5.3
-kind load docker-image bitnamilegacy/spark:3.5.3 --name spark-k8s
+kind load docker-image bitnamilegacy/spark:3.5.3 --name k8s-spark
 ```

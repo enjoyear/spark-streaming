@@ -20,7 +20,7 @@ spec:
       labels: # These are the actual labels that get applied to each Pod created by this Deployment.
               # When the Deployment creates a Pod, it stamps these labels onto the Pod's metadata.
         app: spark-history-server
-        version: v1            # Extra label for versioning
+        version: v2            # Extra label for versioning
         team: data-platform    # Extra label for organization
     spec:
       containers:
