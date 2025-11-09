@@ -37,5 +37,8 @@ Or copy and paste one of these URLs:
     http://jupyter-notebook-f687777f6-hxt94:8888/lab?token=ea936d053d06e686524b5bfbc3b30ab77f1bc75aa39a8e3e
     http://127.0.0.1:8888/lab?token=ea936d053d06e686524b5bfbc3b30ab77f1bc75aa39a8e3e
 ```
-
+or get Jupyter token as below
+```bash
+kubectl logs jupyter-notebook-f687777f6-hxt94 | grep "token="
+```
 
