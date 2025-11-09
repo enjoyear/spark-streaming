@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: jupyter-spark
+  name: jupyter-notebook
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: jupyter-spark
+      app: jupyter-notebook
   template:
     metadata:
       labels:
-        app: jupyter-spark
+        app: jupyter-notebook
     spec:
-      serviceAccountName: jupyter-spark
+      serviceAccountName: jupyter-notebook
       containers:
         - name: jupyter
           image: jupyter/pyspark-notebook:latest
@@ -35,13 +35,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: jupyter-spark-service
+  name: jupyter-notebook-service
   namespace: default
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
-    app: jupyter-spark
+    app: jupyter-notebook
   ports:
     - port: 8888
       targetPort: 8888
-      nodePort: 30888

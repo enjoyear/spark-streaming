@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: jupyter-spark
+  name: jupyter-notebook
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: jupyter-spark-role
+  name: jupyter-notebook-role
   namespace: default
 rules:
   - apiGroups: [""]
@@ -20,13 +20,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: jupyter-spark-rolebinding
+  name: jupyter-notebook-rolebinding
   namespace: default
 subjects:
   - kind: ServiceAccount
-    name: jupyter-spark
+    name: jupyter-notebook
     namespace: default
 roleRef:
   kind: Role
-  name: jupyter-spark-role
+  name: jupyter-notebook-role
   apiGroup: rbac.authorization.k8s.io

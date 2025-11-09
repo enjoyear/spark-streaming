@@ -4,7 +4,7 @@ metadata:
   name: spark-events-pv
 spec:
   capacity:
-    storage: 5Gi
+    storage: 1Gi
   accessModes:
     - ReadWriteMany # allows a Persistent Volume (PV) to be mounted in read-write mode by multiple nodes simultaneously
   persistentVolumeReclaimPolicy: Retain # keep the PV and physical storage and data intact even the corresponding PVC is deleted
@@ -24,4 +24,4 @@ spec:
   storageClassName: "manual"  # Must match PV. Default is `standard`
   resources:
     requests:
-      storage: 5Gi
+      storage: 1Gi
