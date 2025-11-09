@@ -8,3 +8,4 @@ out
 *.iws
 
 spark-warehouse/
+.ipynb_checkpoints
