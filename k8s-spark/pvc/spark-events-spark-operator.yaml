@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: spark-events-pv2   # cannot create PVs with the same name in different namespaces because PVs are cluster-scoped
+                           # resources, not namespace-scoped
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany # allows a Persistent Volume (PV) to be mounted in read-write mode by multiple nodes simultaneously
+  persistentVolumeReclaimPolicy: Retain # keep the PV and physical storage and data intact even the corresponding PVC is deleted
+  storageClassName: "spark-events-pv2"
+  hostPath:
+    path: /tmp/spark-events
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-events-pvc  # can create PVs with the same name in different namespaces
+  namespace: spark-operator
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "spark-events-pv2"
+  resources:
+    requests:
+      storage: 1Gi
