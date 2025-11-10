@@ -3,19 +3,33 @@
 kubectl create namespace spark-standalone
 ```
 
-# Driver for Standalone mode
-Driver connects to the master via `spark://...`
+```
+# Master UI (port 8080)
+http://localhost:30080
+# Shows: Which workers are registered, which applications are running
 
-## Dynamic Allocation
+# Driver UI (port 4040 - appears when job runs)
+kubectl port-forward <driver-pod> 4040:4040
+http://localhost:4040
+# Shows: Your actual job stages, tasks, DAG
+```
+
+
+# Dynamic Allocation Driver Setup
 The driver initially requests some executors but can dynamically add/release them as tasks finish or pending tasks grow.
 
 ## Dynamic Allocation on Standalone
+Driver connects to the master via `spark://...`
 Requirements:
 * The Standalone cluster must have a shuffle service running on each worker.
 Driver Configs:
 ```
 spark.dynamicAllocation.enabled=true
 spark.shuffle.service.enabled=true
+spark.shuffle.manager=SORT
+spark.shuffle.memoryFraction=0.2
+spark.shuffle.reduceLocality.enabled=false
+spark.shuffle.service.port=4048
 ```
 * Actual add/remove of executors is managed by the driver via heartbeats with the shuffle service.
 
