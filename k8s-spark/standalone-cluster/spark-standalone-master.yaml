@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-standalone-master
+  namespace: spark-standalone
+spec:
+  type: NodePort
+  ports:
+    - port: 7077
+      targetPort: 7077
+      name: spark
+    - port: 8080
+      targetPort: 8080
+      name: web-ui
+      nodePort: 30080 # For external access to master UI from outside the cluster
+  selector:
+    component: spark-standalone-master
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-standalone-master
+  namespace: spark-standalone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: spark-standalone-master
+  template:
+    metadata:
+      labels:
+        component: spark-standalone-master
+    spec:
+      containers:
+        - name: spark-standalone-master
+          image: docker.io/library/spark:4.0.0
+          command: ["/opt/spark/bin/spark-class"]
+          args: ["org.apache.spark.deploy.master.Master"]
+          ports:                    # ports on which applications inside containers are configured to listen
+            - containerPort: 7077   # The port number that the container exposes
+            - containerPort: 8080
+          env:
+            - name: SPARK_MASTER_HOST
+              value: "spark-standalone-master"
+            - name: SPARK_MASTER_PORT  # For internal RPC communication between Spark components (workers → master, drivers → master)
+                                       # Workers → Master: register itself and show resources, and send heartbeats
+                                       # Driver → Master: request resources when application starts
+                                       #                  then master allocates executors on workers and tells driver their addresses
+                                       # Driver → Executors: run jobs through scheduler
+                                       # Executors → Driver: return results and status for executed tasks
+                                       #
+                                       # Master is the cluster resource manager, that manages worker nodes and resource allocation.
+                                       # It runs as a separate process in standalone cluster mode.
+                                       # Master is Only for Bootstrapping, then only monitors if workers/executors are still alive
+              value: "7077"            # This is the default value (this section can be removed)
+            - name: SPARK_MASTER_WEBUI_PORT # For Spark Master Web UI
+              value: "8080"                 # This is the default value (this section can be removed)

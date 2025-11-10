@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-standalone-worker
+  namespace: spark-standalone
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      component: spark-standalone-worker
+  template:
+    metadata:
+      labels:
+        component: spark-standalone-worker
+    spec:
+      containers:
+        - name: spark-standalone-worker
+          image: docker.io/library/spark:4.0.0
+          command: ["/opt/spark/bin/spark-class"]
+          args: ["org.apache.spark.deploy.worker.Worker", "spark://spark-standalone-master:7077"]
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SPARK_WORKER_CORES # informational to Spark, for Spark scheduler to decide how many executors to place on a worker
+              value: "2" # Should match the resources.requests.cpu
+            - name: SPARK_WORKER_MEMORY # informational to Spark, for Spark scheduler to decide how many executors to place on a worker
+              value: "1800m"  # Leave ~200MB headroom for JVM overhead
+            - name: SPARK_WORKER_WEBUI_PORT # individual worker's web interface showing executor status, logs, resources
+              value: "8081"   # This is the default value (this section can be removed)
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "2000m"
+            limits:
+              memory: "2Gi" # Memory is non-compressible - once you give memory, you cannot take it away without killing the process
+                            # Always set the memory requests equal to the memory limits
+                            # Watch for OOMKills events
+                            # kubectl get events -n spark-standalone --watch | grep OOM
+              # No limits on CPU to avoid starvation
+              # Check CPU throttling stats:
+              # kubectl exec jupyter-notebook-f687777f6-hxt94 -- cat /sys/fs/cgroup/cpu.stat
