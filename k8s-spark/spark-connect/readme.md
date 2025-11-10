@@ -1,7 +1,8 @@
-Benefits:
-* Warm executors
+Benefits of all-purpose clusters through Spark Connect
+* Dynamic/Warm executors
 * Cached data across many interactive commands/notebooks (talking to the same driver)
 
+# Setup
 Create configmap `spark-connect-default-conf`
 ```bash
 kubectl -n spark-operator create configmap spark-connect-default-conf --from-file=./k8s-spark/spark-connect/spark-connect-defaults.conf
@@ -10,9 +11,21 @@ kubectl -n spark-operator create configmap spark-connect-default-conf --from-fil
 kubectl -n spark-operator delete configmap spark-connect-default-conf
 ```
 
+# Usage
+## Connect to the Spark Connect
+* To access the `spark-connect-svc` locally, run `kubectl port-forward -n spark-operator svc/spark-connect-svc 15002:15002`
+* To access the `spark-connect-svc` within K8S
+```python
+spark = SparkSession.builder \
+    .remote("sc://spark-connect-svc.spark-operator.svc.cluster.local:15002") \
+    .appName("JupyterNotebook") \
+    .getOrCreate()
+```
 
-Clients then attach to `spark-connect-svc:15002` and share that driver.
-To access the `spark-connect-svc` locally, run `kubectl -n spark-operator port-forward svc/spark-connect-svc 15002:15002`
+## Access the Web UI
+Run `kubectl port-forward -n spark-operator deployment/spark-connect 4040:4040` or 
+`kubectl port-forward -n spark-operator svc/spark-connect-svc 4040:4040` (if exposed through service)
+
 
 
 

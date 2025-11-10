@@ -122,12 +122,7 @@ The Spark Operator automatically creates a Kubernetes Service(`<name>-ui-svc`) f
 - DNS resolution: The service gets a DNS name (spark-pi-ui-svc.default.svc.cluster.local)
 - Load balancing: If there were multiple driver pods (though unusual), the service could distribute traffic
 ```
-# Information can also be found through `kubectl get/describe service spark-pi-ui-svc`
 
-Web UI Address:       10.96.236.122:4040    # This is the ClusterIP, only accessible within the cluster. That's why you need to port-forward below.
-                                            # The service below will still be available when the driver is still running
-Web UI Port:          4040                  
-Web UI Service Name:  spark-pi-ui-svc
 ```
 The internal routing is: `Browser (port-forward)` → `Service (10.96.236.122:4040)` → `Driver Pod (10.244.2.7:4040)`
 - Pod IP can be found through `kubectl get pod spark-pi-driver -o wide`

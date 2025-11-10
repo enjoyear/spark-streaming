@@ -31,7 +31,10 @@ spec:
           # initializes a SparkSession, registers with the cluster manager.
           command: ["/opt/spark/sbin/start-connect-server.sh"]
           ports:
-            - containerPort: 15002 # default Connect
+            - containerPort: 15002  # optional section because it's the default port for Spark Connect gRPC
+              name: connect
+            - containerPort: 4040   # optional section because it's the default port for Spark UI
+              name: spark-ui
           readinessProbe:
             tcpSocket:
               port: 15002
@@ -78,3 +81,8 @@ spec:
     - port: 15002
       targetPort: 15002
       protocol: TCP
+      name: connect
+    - port: 4040  # This section is optional because users can access WebUI through the driver's port
+      targetPort: 4040
+      protocol: TCP
+      name: spark-ui

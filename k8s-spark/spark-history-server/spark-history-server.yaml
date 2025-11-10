@@ -21,7 +21,7 @@ spec:
     spec:
       # Need to deploy on the same node as the Spark driver which writes the events to the PVC
       nodeSelector:
-        kubernetes.io/hostname: prod-test-worker
+        kubernetes.io/hostname: prod-test-worker2
       containers:
       - name: spark-history-server
         image: docker.io/library/spark:4.0.0
