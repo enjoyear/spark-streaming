@@ -5,7 +5,8 @@ Benefits of all-purpose clusters through Spark Connect
 # Setup
 Create configmap `spark-connect-default-conf`
 ```bash
-kubectl -n spark-operator create configmap spark-connect-default-conf --from-file=./k8s-spark/spark-connect/spark-connect-defaults.conf
+# Spark Connect looks for `spark-defaults.conf`. The name MUST BE exactly the same!
+kubectl -n spark-operator create configmap spark-connect-default-conf --from-file=./k8s-spark/spark-connect/spark-defaults.conf
 
 # to update it later, you need to delete it first
 kubectl -n spark-operator delete configmap spark-connect-default-conf
