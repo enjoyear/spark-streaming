@@ -17,8 +17,13 @@ metadata:
   namespace: spark-operator
 rules:
   - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    # When Spark Connect driver launches executors on K8S, it
+    # 1. Create a temporary ConfigMap for each application run (containing executor-specific configs)
+    # 2. Name it with the application ID: spark-exec-<app-id>-conf-map
+    # 3. Tell executor pods to mount this ConfigMap
+    # 4. Clean it up when the application ends
+    resources: ["pods", "configmaps"]
+    verbs: ["create", "get", "list", "watch", "delete", "patch", "update"]
   - apiGroups: [""]
     resources: ["pods/log", "pods/status"]
     verbs: ["get", "list"]

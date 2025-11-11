@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: spark-connect  # Spark Connect server is the long-running driver Deployment
+  name: spark-connect1  # Spark Connect server is the long-running driver Deployment
                        # Spark Connect client lives in notebook, IDE, or PySpark script; it translates user code into
                        # a serialized logical plan and sends it over gRPC
   namespace: spark-operator
@@ -9,11 +9,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: spark-connect
+      app: spark-connect1
   template:
     metadata:
       labels:
-        app: spark-connect
+        app: spark-connect1
     spec:
       serviceAccountName: spark-all-purpose-driver1
       initContainers:
@@ -30,6 +30,12 @@ spec:
           # This creates a JVM driver process using `org.apache.spark.sql.connect.service.SparkConnectServer` and
           # initializes a SparkSession, registers with the cluster manager.
           command: ["/opt/spark/sbin/start-connect-server.sh"]
+          resources: # The node resources can be found through `kubectl describe node prod-test-worker`
+            requests:
+              memory: "1500Mi" # or 2Gi
+              cpu: "2000m"
+            limits:
+              memory: "1500Mi"
           ports:
             - containerPort: 15002  # optional section because it's the default port for Spark Connect gRPC
               name: connect
@@ -55,6 +61,10 @@ spec:
               value: ""                # To add custom jars that aren’t in `/opt/spark/jars`
             - name: SPARK_CONF_DIR
               value: /opt/spark/conf
+            - name: SPARK_APP_NAME  # spark.app.name is customizable, but application id isn't
+                                    # application id will be generated when the Spark Connect driver starts. It can be read as below
+                                    # kubectl logs spark-connect-b4f58bdd4-r2pg9 -n spark-operator | grep -i "application\|appid"
+              value: all-purpose1
           volumeMounts:
             - name: spark-events
               mountPath: /tmp/spark-events
@@ -71,12 +81,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: spark-connect-svc
+  name: spark-connect1-svc
   namespace: spark-operator
 spec:
   type: ClusterIP
   selector:
-    app: spark-connect
+    app: spark-connect1
   ports:
     - port: 15002
       targetPort: 15002
