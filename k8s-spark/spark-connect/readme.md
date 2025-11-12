@@ -24,8 +24,8 @@ spark = SparkSession.builder \
 ```
 
 ## Access the Web UI
-Run `kubectl port-forward -n spark-operator deployment/spark-connect 4040:4040` or 
-`kubectl port-forward -n spark-operator svc/spark-connect-svc 4040:4040` (if exposed through service)
+Run `kubectl port-forward -n spark-operator deployment/spark-connect1 4040:4040` or 
+`kubectl port-forward -n spark-operator svc/spark-connect1-svc 4040:4040` (if exposed through service)
 
 
 

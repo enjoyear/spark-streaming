@@ -37,18 +37,25 @@ spec:
             limits:
               memory: "1500Mi"
           ports:
-            - containerPort: 15002  # optional section because it's the default port for Spark Connect gRPC
+            - containerPort: 15002  # Optional because it's the default port for Spark Connect gRPC
               name: connect
-            - containerPort: 4040   # optional section because it's the default port for Spark UI
-              name: spark-ui
-          readinessProbe:
+            - containerPort: 4040   # Optional because it's the default port for Spark UI
+              name: ui
+            - containerPort: 7078   # Required for driver to listen for incoming connections from executors and the master. Random port by default.
+              name: driver
+            - containerPort: 7079   # Required for communication between executors and driver to transfer data blocks. Random port by default.
+              name: block-manager
+          readinessProbe:           # The readiness probe affects when service routes traffic to the pod,
+                                    # but the spark-operator doesn't wait for readiness before provisioning executors.
+                                    # The spark-operator watches for pod phase changes, and starts provisioning executors
+                                    # when driver pod becomes "Running"
             tcpSocket:
-              port: 15002
+              port: 4040
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             tcpSocket:
-              port: 15002
+              port: 4040
             initialDelaySeconds: 10
             periodSeconds: 10
           env:
@@ -63,7 +70,6 @@ spec:
               value: /opt/spark/conf
             - name: SPARK_APP_NAME  # spark.app.name is customizable, but application id isn't
                                     # application id will be generated when the Spark Connect driver starts. It can be read as below
-                                    # kubectl logs spark-connect-b4f58bdd4-r2pg9 -n spark-operator | grep -i "application\|appid"
               value: all-purpose1
           volumeMounts:
             - name: spark-events
@@ -84,15 +90,28 @@ metadata:
   name: spark-connect1-svc
   namespace: spark-operator
 spec:
+  clusterIP: None  # By default, a virtual ClusterIP will be created for this service.
+                   # All clients connect to that virtual IP and Kubernetes load-balances requests to the backend pods.
+                   # Setting it to None creates a headless service, where Kubernetes SKIPs the load balancer IP.
+                   # DNS instead returns the actual pod IP(s) of the matching pods(an array of IPs if multiple pods),
+                   # enabling direct pod-to-pod communication.
+                   # The actual IP can be resolved through
+                   # kubectl run -it --rm --restart=Never busybox --image=busybox -- nslookup spark-connect1-svc.spark-operator.svc.cluster.local
+                   # To set up per-pod DNS, you need to configure `hostname` and `subdomain` in the Pod spec.
   type: ClusterIP
   selector:
     app: spark-connect1
   ports:
-    - port: 15002
+    - name: connect
+      port: 15002
       targetPort: 15002
-      protocol: TCP
-      name: connect
-    - port: 4040  # This section is optional because users can access WebUI through the driver's port
+      protocol: TCP # this is the default value
+    - name: ui      # This section is optional because users can access WebUI through the driver's port
+      port: 4040
       targetPort: 4040
-      protocol: TCP
-      name: spark-ui
+    - name: driver
+      port: 7078
+      targetPort: 7078
+    - name: block-manager
+      port: 7079
+      targetPort: 7079
