@@ -45,17 +45,18 @@ spec:
               name: driver
             - containerPort: 7079   # Required for communication between executors and driver to transfer data blocks. Random port by default.
               name: block-manager
-          readinessProbe:           # The readiness probe affects when service routes traffic to the pod,
-                                    # but the spark-operator doesn't wait for readiness before provisioning executors.
-                                    # The spark-operator watches for pod phase changes, and starts provisioning executors
-                                    # when driver pod becomes "Running"
+          readinessProbe:  # This configuration is not very useful in this case
+                           # The readiness probe only affects when service routes traffic to the pod,
+                           # but the spark-operator doesn't wait for readiness before provisioning executors.
+                           # The spark-operator watches for pod phase changes, and starts provisioning executors
+                           # when driver pod becomes "Running"
             tcpSocket:
-              port: 4040
+              port: 15002
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             tcpSocket:
-              port: 4040
+              port: 15002
             initialDelaySeconds: 10
             periodSeconds: 10
           env:
@@ -68,9 +69,6 @@ spec:
               value: ""                # To add custom jars that aren’t in `/opt/spark/jars`
             - name: SPARK_CONF_DIR
               value: /opt/spark/conf
-            - name: SPARK_APP_NAME  # spark.app.name is customizable, but application id isn't
-                                    # application id will be generated when the Spark Connect driver starts. It can be read as below
-              value: all-purpose1
           volumeMounts:
             - name: spark-events
               mountPath: /tmp/spark-events
