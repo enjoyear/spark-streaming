@@ -45,3 +45,24 @@ or get Jupyter token as below
 kubectl logs jupyter-notebook-f687777f6-hxt94 | grep "token="
 ```
 
+# Run Scala in Jupyter
+## Local setup
+```bash
+# Install coursier
+brew install coursier/formulas/coursier
+cs --version
+# Install Almond
+cs launch --use-bootstrap almond:0.14.1 --scala 2.13.16 -- --install --force
+
+# set env var before starting Jupyter
+# or keep it in ~/Library/Jupyter/kernels/scala/kernel.json
+export JDK_JAVA_OPTIONS="--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED $JDK_JAVA_OPTIONS"
+jupyter lab
+```
+
+## install Spark jars on the classpath
+```bash
+# To install Spark jars on the classpath, run below in the Jupyter notebook
+import $ivy.`org.apache.spark::spark-connect-client-jvm:4.0.0`
+```
+

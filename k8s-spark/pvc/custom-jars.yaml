@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: custom-jars-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany # allows a Persistent Volume (PV) to be mounted in read-write mode by multiple nodes simultaneously
+  persistentVolumeReclaimPolicy: Retain # keep the PV and physical storage and data intact even the corresponding PVC is deleted
+  storageClassName: "custom-jars"
+  hostPath: # Create a PV and PVC using hostPath, which maps to the kind node's filesystem:
+    path: /tmp/custom-jars
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: custom-jars-pvc
+  namespace: spark-operator
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "custom-jars"
+  resources:
+    requests:
+      storage: 1Gi

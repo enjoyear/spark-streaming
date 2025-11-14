@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: spark-connect1  # Spark Connect server is the long-running driver Deployment
+  name: all-purpose1  # Spark Connect server is the long-running driver Deployment
                        # Spark Connect client lives in notebook, IDE, or PySpark script; it translates user code into
                        # a serialized logical plan and sends it over gRPC
   namespace: spark-operator
@@ -9,11 +9,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: spark-connect1
+      app: all-purpose1
   template:
     metadata:
       labels:
-        app: spark-connect1
+        app: all-purpose1
     spec:
       serviceAccountName: spark-all-purpose-driver1
       initContainers:
@@ -66,7 +66,7 @@ spec:
                                        # If the script daemonizes, the pod will exit immediately after startup.
               value: "true"
             - name: SPARK_DRIVER_EXTRA_CLASSPATH
-              value: ""                # To add custom jars that aren’t in `/opt/spark/jars`
+              value: /opt/spark/custom-jars         # To add custom jars that aren’t in `/opt/spark/jars`
             - name: SPARK_CONF_DIR
               value: /opt/spark/conf
           volumeMounts:
@@ -74,6 +74,8 @@ spec:
               mountPath: /tmp/spark-events
             - name: spark-default-conf
               mountPath: /opt/spark/conf
+            - name: custom-jars
+              mountPath: /opt/spark/custom-jars
       volumes:
         - name: spark-events
           persistentVolumeClaim:
@@ -81,11 +83,14 @@ spec:
         - name: spark-default-conf
           configMap:
             name: spark-connect-default-conf
+        - name: custom-jars
+          persistentVolumeClaim:
+            claimName: custom-jars-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: spark-connect1-svc
+  name: all-purpose1-svc
   namespace: spark-operator
 spec:
   clusterIP: None  # By default, a virtual ClusterIP will be created for this service.
@@ -94,11 +99,11 @@ spec:
                    # DNS instead returns the actual pod IP(s) of the matching pods(an array of IPs if multiple pods),
                    # enabling direct pod-to-pod communication.
                    # The actual IP can be resolved through
-                   # kubectl run -it --rm --restart=Never busybox --image=busybox -- nslookup spark-connect1-svc.spark-operator.svc.cluster.local
+                   # kubectl run -it --rm --restart=Never busybox --image=busybox -- nslookup all-purpose1-svc.spark-operator.svc.cluster.local
                    # To set up per-pod DNS, you need to configure `hostname` and `subdomain` in the Pod spec.
   type: ClusterIP
   selector:
-    app: spark-connect1
+    app: all-purpose1
   ports:
     - name: connect
       port: 15002
