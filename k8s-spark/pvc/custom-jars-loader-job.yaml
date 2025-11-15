@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job  # `Job` kind allows updates to specs
+metadata:
+  name: custom-jars-job
+spec:
+  backoffLimit: 0  # A backoffLimit of 0 means "run exactly once, don't retry," while higher numbers allow more attempts.
+  template:
+    spec:
+      restartPolicy: Never  # The Pod's restartPolicy must be OnFailure or Never for the backoffLimit to be effective.
+                            # OnFailure means restarting container inside the same Pod, and this counts towards the limit.
+                            # Never means creating a brand new Pod for each retry attempt.
+      containers:
+        - name: sh
+          image: busybox:1.36
+          command: ["sh","-c","sleep 3600"]  # gives you 1 hour to upload the jars
+                                             # kubectl cp word-count/build/libs/word-count.jar custom-jars-job-x8fzs:/custom-jars/word-count.jar
+                                             # docker exec -it prod-test-worker2 ls /tmp/custom-jars2
+          volumeMounts:
+            - name: jars
+              mountPath: /custom-jars
+      volumes:
+        - name: jars
+          persistentVolumeClaim:
+            claimName: custom-jars-pvc2

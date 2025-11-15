@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: PersistentVolume # PV is cluster-scoped
+metadata:
+  name: custom-jars-pv2
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany # allows a Persistent Volume (PV) to be mounted in read-write mode by multiple nodes simultaneously
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "custom-jars2"
+  local:
+    path: /tmp/custom-jars2  # For local mode, you must manually ensure the directory path exists on the specified node
+                             # before k8s tries to mount it
+  nodeAffinity:              # Required for local type
+                             # Pods using a local PersistentVolume (PV) inherit the PV's node affinity requirement
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - prod-test-worker2 # Match the node name in the Pod's nodeSelector: `kubectl get nodes --show-labels`
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: custom-jars-pvc2
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "custom-jars2"
+  resources:
+    requests:
+      storage: 1Gi

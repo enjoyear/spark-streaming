@@ -16,7 +16,8 @@ spec:
       serviceAccountName: jupyter-notebook
       containers:
         - name: jupyter
-          image: jupyter/pyspark-notebook:latest
+          # image: jupyter/pyspark-notebook:latest  # Only python support in the notebook
+          image: almondsh/almond:latest  # image that supports Scala
           ports:
             - containerPort: 8888
           env:
@@ -27,10 +28,15 @@ spec:
           volumeMounts:
             - name: jupyter-data
               mountPath: /home/jovyan/work
+            - name: jars
+              mountPath: /custom-jars2
       volumes:
         - name: jupyter-data
           persistentVolumeClaim:
             claimName: jupyter-pvc
+        - name: jars
+          persistentVolumeClaim:
+            claimName: custom-jars-pvc2
 ---
 apiVersion: v1
 kind: Service

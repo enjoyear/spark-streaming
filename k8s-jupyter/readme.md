@@ -17,7 +17,7 @@ Sync files between local and pod
 kubectl exec -n default jupyter-notebook-f687777f6-hxt94 -- mkdir -p /home/jovyan/my_notebooks
 
 # Copy local files to pod
-kubectl cp ./k8s-jupyter/notebooks/legacy_way_pod.ipynb default/jupyter-notebook-f687777f6-hxt94:/home/jovyan/my_notebooks
+kubectl cp ./k8s-jupyter/notebooks/pods/new-driver.ipynb default/jupyter-notebook-699cff5c54-hr2hs:/home/jovyan/work/
 
 # Copy pod files to local
 kubectl cp default/jupyter-notebook-f687777f6-hxt94:/home/jovyan/my_notebooks/legacy_way_pod.ipynb ./k8s-jupyter/notebooks/legacy_way.ipynb
@@ -26,7 +26,7 @@ kubectl cp default/jupyter-notebook-f687777f6-hxt94:/home/jovyan/my_notebooks ./
 ```
 
 The only difference between the local Jupyter file and remote Jupyter file (on pod) is how the kube config is loaded
-* Compare the difference between [legacy_way_pod.ipynb](notebooks/legacy_way_pod.ipynb) and [legacy_way_local.ipynb](notebooks/legacy_way_local.ipynb) to see the details
+* Compare the difference between [legacy_way_pod.ipynb](notebooks/pods/legacy_way_pod.ipynb) and [legacy_way_local.ipynb](notebooks/local/legacy_way_local.ipynb) to see the details
 
 # Jupyter in K8S
 When you start the container for the first time (without setting a password), Jupyter automatically generates
