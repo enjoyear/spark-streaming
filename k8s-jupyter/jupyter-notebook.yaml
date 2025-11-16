@@ -32,8 +32,9 @@ spec:
               mountPath: /custom-jars2
       containers:
         - name: jupyter
-          # image: jupyter/pyspark-notebook:latest  # Only python support in the notebook
-          image: almondsh/almond:latest  # image that supports Scala
+          # image: jupyter/pyspark-notebook:latest  # Only PySpark support in the notebook
+          # image: almondsh/almond:latest  # image that supports Scala
+          image: jupyter/all-spark-notebook
           ports:
             - containerPort: 8888
           env:
