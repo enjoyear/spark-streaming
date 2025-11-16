@@ -14,6 +14,22 @@ spec:
         app: jupyter-notebook
     spec:
       serviceAccountName: jupyter-notebook
+      initContainers:
+        - name: fix-perms
+          image: busybox:1.36
+          # uid=1000(jovyan) gid=100(users) groups=100(users)
+          # `|| true` is to ignore non-zero exit codes. You can use `echo $?` to get the exit code of previous command.
+          # In initContainer, if any command exits with a non-zero status, the whole container fails, and the pod never starts.
+          # In `ug+rwx`, `+` means adding these permissions (do not remove existing ones)
+          # `chmod -R ug+rwx /home/jovyan/work` recursively adds permissions for both u(owner) and g(group) on all files and directories
+          command: [ "sh","-c","chown -R 1000:100 /home/jovyan/work /custom-jars2 || true; chmod -R ug+rwx /home/jovyan/work /custom-jars2 || true" ]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: jupyter-data
+              mountPath: /home/jovyan/work
+            - name: jars
+              mountPath: /custom-jars2
       containers:
         - name: jupyter
           # image: jupyter/pyspark-notebook:latest  # Only python support in the notebook
