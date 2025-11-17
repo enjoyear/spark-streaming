@@ -10,5 +10,5 @@ docker image inspect jupyter-scala:v1
 
 # Load the Image into kind
 # --name part is for kind cluster name (`kind get clusters`)
-kind load docker-image spark-wordcount:v1 --name prod-test
+kind load docker-image jupyter-scala:v1 --name prod-test
 ```
