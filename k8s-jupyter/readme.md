@@ -18,10 +18,10 @@ kubectl exec -n default jupyter-notebook-f687777f6-hxt94 -- mkdir -p /home/jovya
 
 # Copy local files to pod
 # container name "jupyter" is needed when there are multiple containers in the pod
-kubectl cp -c jupyter ./k8s-jupyter/notebooks/pods/. default/jupyter-notebook-657c9475f9-xt89x:/home/jovyan/work/
+kubectl cp -c jupyter ./k8s-jupyter/notebooks/pods/. default/jupyter-notebook-75b646b999-p5phx:/home/jovyan/work/
 
 # Copy pod files to local
-kubectl cp default/jupyter-notebook-75b646b999-smn7w:/home/jovyan/work ./k8s-jupyter/notebooks/pods
+kubectl cp default/jupyter-notebook-75b646b999-p5phx:/home/jovyan/work ./k8s-jupyter/notebooks/pods
 ```
 
 The only difference between the local Jupyter file and remote Jupyter file (on pod) is how the kube config is loaded

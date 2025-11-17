@@ -16,9 +16,13 @@ object WordCountSparkConnect extends App {
 
   val spark = SparkSession
     .builder
+    // .remote("sc://localhost:15002")
     .remote("sc://all-purpose1-svc.spark-operator.svc.cluster.local:15002")
     // .appName("WordCount") spark.app.name configuration is not supported in Connect mode.
     .getOrCreate()
+
+  // Upload from the Jupyter pod to the server's Artifact Manager
+  spark.addArtifact("file:///custom-jars2/word-count.jar")
 
   import spark.implicits._
 

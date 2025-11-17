@@ -9,9 +9,16 @@ spec:
     - ReadWriteMany # allows a Persistent Volume (PV) to be mounted in read-write mode by multiple nodes simultaneously
   persistentVolumeReclaimPolicy: Retain
   storageClassName: "custom-jars"
-  hostPath:
-    path: /tmp/custom-jars
-    type: DirectoryOrCreate
+  local:
+    path: /tmp/custom-jars2
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - prod-test-worker2 # Match the node name in the Pod's nodeSelector: `kubectl get nodes --show-labels`
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

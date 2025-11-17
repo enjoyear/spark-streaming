@@ -60,3 +60,8 @@ RUN pip install --no-cache-dir \
     matplotlib
 
 WORKDIR /home/jovyan
+
+# Set JDK_JAVA_OPTIONS for Arrow memory access
+# We need this at the Jupyter Kernel runtim, otherwise it will give the error like
+# java.lang.RuntimeException: Failed to initialize MemoryUtil. You must start Java with `--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED` (See https://arrow.apache.org/docs/java/install.html)
+ENV JDK_JAVA_OPTIONS="--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED"
