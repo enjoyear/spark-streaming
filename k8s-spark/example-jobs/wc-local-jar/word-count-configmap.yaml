@@ -1,7 +1,7 @@
 apiVersion: sparkoperator.k8s.io/v1beta2
 kind: SparkApplication
 metadata:
-  name: spark-wordcount
+  name: word-count-configmap
   namespace: default
 spec:
   type: Java # both Java and Scala should work? to run an application from JAR
@@ -18,6 +18,8 @@ spec:
     spark.eventLog.enabled: "true"
     spark.eventLog.dir: "file:///tmp/spark-events"
   driver:
+    nodeSelector:
+      kubernetes.io/hostname: prod-test-worker2 # Deploy to the same node as the SHS
     labels:
       version: 4.0.0
     env:
@@ -86,5 +88,5 @@ spec:
     persistentVolumeClaim:
       claimName: spark-events-pvc  # This REFERENCES the existing PVC
   - name: spark-jar
-    configMap:
+    configMap:  # Not a good idea for production because it's saved in ETCD
       name: word-count-jar
