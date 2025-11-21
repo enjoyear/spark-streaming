@@ -10,31 +10,24 @@ import org.apache.spark.sql.functions._
  * Logging level: since SparkContext is hidden, set log level on the server side (e.g., log4j config in the Spark
  * Connect server image) or via server Spark conf at startup.
  */
-object WordCountSparkConnect extends App {
-  val argumentList: Array[String] = args
-  argumentList.foreach(arg => println(s"Received argument: $arg"))
-
-  val mode: String = argumentList(0)
-  val artifactPath: String = argumentList(1) // "file:///custom-jars2/word-count.jar"
-
+object WordCountSparkConnectIDE extends App {
   val spark =
     //.appName("WordCount") spark.app.name configuration is not supported in Connect mode.
-    if (mode == "local")
-      SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
-    else
-      SparkSession.builder.remote("sc://all-purpose1-svc.spark-operator.svc.cluster.local:15002").getOrCreate()
-
-
-  // Upload from the Jupyter pod to the server's Artifact Manager
-  spark.addArtifact(artifactPath)
+    SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
 
   import spark.implicits._
 
-  val inputPath = "file:///etc/passwd" // paths resolved on the Spark server
+  // In Spark Connect, anything like .flatMap(_.split...) or .filter(_.nonEmpty) becomes a ScalaUDF
+  // that must exist on the server.
+  // Option 1: avoid closures
+  // .select(explode(split(col("value"), "\\s+")).as("word"))
+  //      .filter(length(col("word")) > 0)
+  // Option 2: package and add artifact
+  spark.addArtifact("/Users/chenguo/src/chen/spark-streaming/word-count-sc/build/libs/word-count-sc.jar")
 
   val words: DataFrame =
     spark.read
-      .textFile(inputPath) // Dataset[String]
+      .textFile("file:///etc/passwd") // paths resolved on the Spark server
       .flatMap(_.split("\\s+")) // Dataset[String]
       .filter(_.nonEmpty)
       .toDF("word")
@@ -46,7 +39,6 @@ object WordCountSparkConnect extends App {
       .limit(100)
 
   result.collect().foreach(println)
-
   spark.stop()
 }
 

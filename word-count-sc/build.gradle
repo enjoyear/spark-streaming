@@ -1,0 +1,17 @@
+// ./gradlew :word-count-sc:build
+configurations.implementation {
+    // Verify dependency with
+    // ./gradlew :word-count-sc:dependencies --configuration runtimeClasspath | grep -E 'spark-(sql|core)|connect-client'
+    // ./gradlew :word-count-sc:dependencyInsight --dependency spark-sql
+    withDependencies { deps ->
+        // With spark-sql, it will start the classic Spark locally (org.apache.spark.sql.classic.SparkSession)
+        // instead of the Connect client. Classic requires a master URL, while in Connect mode, no local SparkContext is created at all.
+        deps.removeIf { it.group == 'org.apache.spark' && it.name.startsWith('spark-sql') }
+        deps.removeIf { it.group == 'org.apache.spark' && it.name.startsWith('spark-streaming') } // this imports spark-core
+        deps.removeIf { it.group == 'org.apache.spark' && it.name.startsWith('spark-core') }
+    }
+}
+
+dependencies {
+    implementation "org.apache.spark:spark-connect-client-jvm_2.13:4.0.0"
+}
