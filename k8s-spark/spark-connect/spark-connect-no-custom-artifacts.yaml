@@ -33,7 +33,7 @@ spec:
           resources: # The node resources can be found through `kubectl describe node prod-test-worker`
             requests:
               memory: "1500Mi" # or 2Gi
-              cpu: "2000m"
+              cpu: "2001m"
             limits:
               memory: "1500Mi"
           ports:
