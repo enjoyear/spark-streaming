@@ -9,3 +9,5 @@ out
 
 spark-warehouse/
 .ipynb_checkpoints
+dist
+*.egg-info/
