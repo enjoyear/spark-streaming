@@ -1,4 +1,3 @@
-// ./gradlew :word-count:build
 dependencies {
     //this is just an API. Find the dbutils at com.databricks.dbutils_v1.DBUtilsV1
     implementation "com.databricks:dbutils-api_2.12:0.0.5"
