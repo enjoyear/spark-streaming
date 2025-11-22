@@ -25,6 +25,8 @@ spec:
               mountPath: /tmp/spark-events
       containers:
         - name: driver
+          # This is using Python 3.10.12
+          # k exec -it all-purpose1-9f78dbd5b-d7mw8 -n spark-operator -- python3 --version
           image: docker.io/library/spark:4.0.0
           # Spark Connect server binary reads spark-defaults.conf we mount
           # This creates a JVM driver process using `org.apache.spark.sql.connect.service.SparkConnectServer` and

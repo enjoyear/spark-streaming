@@ -4,15 +4,10 @@ from pyspark.sql.types import ArrayType, StringType
 
 
 def main(spark: SparkSession):
-    # OPTIONAL: if you package your Python code as a wheel and want the cluster
-    # to see it, you can add it as a pyfile artifact like this:
-    #
     # spark.addArtifacts(
     #     "/path/to/your_wheel-0.1-py3-none-any.whl",
     #     pyfile=True,
     # )
-
-    # ---- closure-style logic (analogous to Scala flatMap + filter) ----
 
     # This is your closure. It will be serialized and run on the Python workers.
     def split_and_filter(line: str):
@@ -24,7 +19,7 @@ def main(spark: SparkSession):
 
     words = (
         spark.read
-        .text("file:///etc/passwd")  # "value" column
+        .text("file:///etc/passwd")
         .select(
             explode(split_and_filter_udf(col("value"))).alias("word")
         )
@@ -34,7 +29,7 @@ def main(spark: SparkSession):
         words.groupBy("word")
         .agg(count(lit(1)).alias("count"))
         .orderBy(desc("count"))
-        .limit(100)
+        .limit(10)
     )
 
     for row in result.collect():
@@ -42,6 +37,8 @@ def main(spark: SparkSession):
 
 
 if __name__ == "__main__":
+    import sys
+    print(f"Python version: {sys.version}")
     spark = SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
     try:
         main(spark)
