@@ -4,14 +4,6 @@ kubectl port-forward service/jupyter-notebook-service 8888:8888
 ```
 
 # Local Commands
-```bash
-# to install jupyter notebook
-pip3 install jupyterlab
-
-# start the jupyter notebook locally using current folder
-jupyter lab
-```
-
 Sync files between local and pod
 ```bash
 kubectl exec -n default jupyter-notebook-f687777f6-hxt94 -- mkdir -p /home/jovyan/my_notebooks
@@ -53,6 +45,7 @@ cs --version
 # Install Almond
 cs launch --use-bootstrap almond:0.14.1 --scala 2.13.16 -- --install --force
 
+pip3 install jupyterlab
 # set env var before starting Jupyter
 # or keep it in ~/Library/Jupyter/kernels/scala/kernel.json
 export JDK_JAVA_OPTIONS="--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED $JDK_JAVA_OPTIONS"

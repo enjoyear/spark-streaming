@@ -24,29 +24,30 @@ object WordCountSparkConnect extends App {
     else
       SparkSession.builder.remote("sc://all-purpose1-svc.spark-operator.svc.cluster.local:15002").getOrCreate()
 
+  try {
+    // Upload from the Jupyter pod to the server's Artifact Manager
+    spark.addArtifact(artifactPath)
 
-  // Upload from the Jupyter pod to the server's Artifact Manager
-  spark.addArtifact(artifactPath)
+    import spark.implicits._
 
-  import spark.implicits._
+    val inputPath = "file:///etc/passwd" // paths resolved on the Spark server
+    val words: DataFrame =
+      spark.read
+        .textFile(inputPath) // Dataset[String]
+        .flatMap(_.split("\\s+")) // Dataset[String]
+        .filter(_.nonEmpty)
+        .toDF("word")
 
-  val inputPath = "file:///etc/passwd" // paths resolved on the Spark server
+    val result =
+      words.groupBy("word")
+        .agg(count(lit(1)).as("count"))
+        .orderBy(desc("count"))
+        .limit(100)
 
-  val words: DataFrame =
-    spark.read
-      .textFile(inputPath) // Dataset[String]
-      .flatMap(_.split("\\s+")) // Dataset[String]
-      .filter(_.nonEmpty)
-      .toDF("word")
-
-  val result =
-    words.groupBy("word")
-      .agg(count(lit(1)).as("count"))
-      .orderBy(desc("count"))
-      .limit(100)
-
-  result.collect().foreach(println)
-
-  spark.stop()
+    result.collect().foreach(println)
+  }
+  finally {
+    spark.stop()
+  }
 }
 
