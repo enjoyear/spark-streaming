@@ -4,12 +4,7 @@ from pyspark.sql.types import ArrayType, StringType
 
 
 def main(spark: SparkSession):
-    # spark.addArtifacts(
-    #     "/path/to/your_wheel-0.1-py3-none-any.whl",
-    #     pyfile=True,
-    # )
-
-    # This is your closure. It will be serialized and run on the Python workers.
+    # This closure will be serialized and run on the Python workers.
     def split_and_filter(line: str):
         if line is None:
             return []
