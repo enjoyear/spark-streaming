@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod # a one-time, ad-hoc naked pod launched manually and NOT managed by a controller.
+          # Most specs of the `POD` kind is immutable once the pod is created. Delete & recreate for updates.
+metadata:
+  name: spark-submit
+spec:
+  restartPolicy: Never
+  serviceAccountName: chen-guo
+  containers:
+    - name: sh
+      image:  docker.io/library/spark:4.0.0
+      command: ["sh","-c","sleep infinity"]
+#      volumeMounts:
+#        - name: jars
+#          mountPath: /custom-jars
+  volumes:
+    - name: jars
+      persistentVolumeClaim:
+        claimName: custom-jars-pvc2
