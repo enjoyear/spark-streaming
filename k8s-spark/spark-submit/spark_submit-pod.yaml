@@ -10,9 +10,9 @@ spec:
     - name: sh
       image:  docker.io/library/spark:4.0.0
       command: ["sh","-c","sleep infinity"]
-#      volumeMounts:
-#        - name: jars
-#          mountPath: /custom-jars
+      volumeMounts:
+        - name: jars
+          mountPath: /custom-jars
   volumes:
     - name: jars
       persistentVolumeClaim:
