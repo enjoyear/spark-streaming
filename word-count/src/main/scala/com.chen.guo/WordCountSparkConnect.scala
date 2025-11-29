@@ -15,7 +15,11 @@ object WordCountSparkConnect extends App {
   argumentList.foreach(arg => println(s"Received argument: $arg"))
 
   val mode: String = argumentList(0)
-  val artifactPath: String = argumentList(1) // "file:///custom-jars2/word-count.jar"
+  val artifactPath: String = if (argumentList.size > 1) {
+    argumentList(1) // "file:///custom-jars2/word-count.jar"
+  } else {
+    null
+  }
 
   val spark =
     //.appName("WordCount") spark.app.name configuration is not supported in Connect mode.
@@ -25,8 +29,15 @@ object WordCountSparkConnect extends App {
       SparkSession.builder.remote("sc://all-purpose1-svc.spark-operator.svc.cluster.local:15002").getOrCreate()
 
   try {
-    // Upload from the Jupyter pod to the server's Artifact Manager
-    spark.addArtifact(artifactPath)
+    if (artifactPath == null || !artifactPath.startsWith("file://")) {
+      println("skip loading artifact")
+    } else {
+      println(s"Uploading from local/pod to server's Artifact Manager: $artifactPath")
+      // When Spark Connect server tries to deserialize the closures, it uses the JobArtifactSet/ArtifactManager classloader,
+      // not the plain driver classpath (spark.driver.extraClassPath).
+      // This classloader only sees jars that have been registered via spark.addArtifact(...)
+      spark.addArtifact(artifactPath)
+    }
 
     import spark.implicits._
 
