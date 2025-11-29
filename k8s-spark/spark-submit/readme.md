@@ -31,7 +31,7 @@ kubectl edit rolebinding spark-operator-spark -n default
 
 # Trigger through `spark-submit`
 
-1. Run the driver as chen-guo, which has enough position to manage pods
+1. Run the driver as chen-guo, which has enough permissions to manage pods
 - Optionally add `--conf spark.kubernetes.authenticate.executor.serviceAccountName=chen-guo` to be consistent
 2. The `local://` prefix tells Spark the file is already present in the container image (don’t upload)
 - `file://` means a local file that must be uploaded to somewhere shared. Spark tries to upload it to a staging location (spark.kubernetes.file.upload.path)
@@ -122,17 +122,4 @@ export SPARK_DRIVER_POD_IP=$(hostname -i)
 
 ## `spark-submit` from local
 `brew install apache-spark`
-
-$SPARK_HOME
-```bash
-/opt/spark/bin/spark-submit \
-  --master k8s://https://kubernetes.default.svc \
-  --deploy-mode client \
-  --name word-count-emr \
-  --class com.chen.guo.WordCountEMR \
-  --conf spark.kubernetes.namespace=spark-operator \
-  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark-all-purpose-driver1 \
-  --conf spark.kubernetes.container.image=docker.io/library/spark:4.0.0 \
-  /opt/spark/jars/word-count.jar \
-  p1 p2
-```
+Or download the tar file, then set $SPARK_HOME

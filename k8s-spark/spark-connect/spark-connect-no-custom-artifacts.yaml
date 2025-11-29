@@ -14,6 +14,7 @@ spec:
     metadata:
       labels:
         app: all-purpose1
+        type: no-custom-artifacts
     spec:
       serviceAccountName: spark-all-purpose-driver1
       initContainers:

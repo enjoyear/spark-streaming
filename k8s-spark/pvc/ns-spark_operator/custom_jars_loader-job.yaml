@@ -1,6 +1,7 @@
 apiVersion: batch/v1
 kind: Job  # `Job` kind allows updates to specs
 metadata:
+  namespace: spark-operator
   # name: custom-jars-job       # With this fixed name, I can’t restart a completed Job directly. Jobs are immutable once finished.
   generateName: custom-jars-job-  # Each run will be given a different name with this prefix
                                   # kubectl create -f ...
