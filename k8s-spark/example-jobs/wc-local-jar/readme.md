@@ -60,16 +60,16 @@ kubectl apply -f ./k8s-spark/example-jobs/wc-local-jar/word-count-dockerimage.ya
 ```bash
 # build the image with a tag
 # the last `.` indicates the context path, which controls what files are visible to the Dockerfile during build (e.g. what COPY/ADD can see)
-docker build -t spark-wordcount:v1 -f k8s-spark/example-jobs/wc-local-jar/Dockerfile .
+docker build -t spark-wordcount:v2 -f k8s-spark/example-jobs/wc-local-jar/Dockerfile .
 
 # Verify the image was created
 docker images | grep spark-wordcount
 docker images --digests
-docker image inspect spark-wordcount:v1
+docker image inspect spark-wordcount:v2
 
 # Load the Image into kind
 # --name part is for kind cluster name (`kind get clusters`)
-kind load docker-image spark-wordcount:v1 --name prod-test
+kind load docker-image spark-wordcount:v2 --name prod-test [--nodes prod-test-worker]
 ```
 
 Verify the image is available in kind
@@ -101,5 +101,5 @@ debugging commands
 # Check the JAR file permissions inside the container
 kubectl exec spark-wordcount-driver -- ls -la /opt/spark-work-dir/
 # Verify the JAR contains your class
-docker run --rm spark-wordcount:v1 jar tf /opt/spark-work-dir/word-count.jar | grep WordCountEMR
+docker run --rm spark-wordcount:v2 jar tf /opt/spark-work-dir/word-count.jar | grep WordCountEMR
 ```

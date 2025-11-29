@@ -6,7 +6,7 @@ metadata:
 spec:
   type: Scala
   mode: cluster
-  image: spark-wordcount:v1  # Your custom image
+  image: spark-wordcount:v2  # Your custom image
   imagePullPolicy: Never  # We will upload manually to the k8s workers
   mainClass: com.chen.guo.WordCountEMR
   mainApplicationFile: local:///opt/spark-work-dir/word-count.jar  # the Jar file need to be uploaded/mounted to this location

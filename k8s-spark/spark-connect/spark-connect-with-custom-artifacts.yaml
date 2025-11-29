@@ -26,7 +26,7 @@ spec:
               mountPath: /tmp/spark-events
       containers:
         - name: driver
-          image: docker.io/library/spark:4.0.0
+          image: spark-wordcount:v2
           # Spark Connect server binary reads spark-defaults.conf we mount
           # This creates a JVM driver process using `org.apache.spark.sql.connect.service.SparkConnectServer` and
           # initializes a SparkSession, registers with the cluster manager.
@@ -62,7 +62,7 @@ spec:
             periodSeconds: 10
           env:
             - name: RUN_ID
-              value: "1730936401"
+              value: "1730936402"
             - name: SPARK_NO_DAEMONIZE # Tells Spark startup scripts (like start-connect-server.sh, start-thriftserver.sh, etc.)
                                        # to run in the foreground instead of daemonizing.
                                        # Kubernetes expects the main container process (PID 1) to stay in the foreground.

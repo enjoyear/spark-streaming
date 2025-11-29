@@ -150,5 +150,6 @@ Create a namespace + service account + RBAC for Spark driver
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .status.images[*]}:{.names}{"\n"}{end}{end}'
 # Or using the Container Runtime Interface
 docker exec -it prod-test-worker crictl images
+docker exec -it prod-test-worker crictl rmi spark-wordcount:v1
 ```
 
