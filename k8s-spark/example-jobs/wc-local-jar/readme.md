@@ -70,6 +70,12 @@ docker image inspect spark-wordcount:v2
 # Load the Image into kind
 # --name part is for kind cluster name (`kind get clusters`)
 kind load docker-image spark-wordcount:v2 --name prod-test [--nodes prod-test-worker]
+
+# Check images cached on each Node
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .status.images[*]}:{.names}{"\n"}{end}{end}'
+# Or using the Container Runtime Interface
+docker exec -it prod-test-worker crictl images
+docker exec -it prod-test-worker crictl rmi spark-wordcount:v1
 ```
 
 Verify the image is available in kind

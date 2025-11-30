@@ -20,17 +20,29 @@ spec:
       initContainers:
         - name: create-event-log-dir
           image: busybox:1.36
-          command: [ 'sh', '-c', 'mkdir -p /tmp/spark-events && chown -R 185:185 /tmp/spark-events && chmod 755 /tmp/spark-events' ]
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /tmp/spark-events
+              chown -R 185:185 /tmp/spark-events
+              chmod 755 /tmp/spark-events
+              cp /tmp/custom-jars/* /shared-jars/
           volumeMounts:
             - name: spark-events
               mountPath: /tmp/spark-events
+            - name: custom-jars
+              mountPath: /tmp/custom-jars
+            - name: shared-jars  # shared volume
+              mountPath: /shared-jars
       containers:
         - name: driver
-          image: spark-wordcount:v2
+          image: docker.io/library/spark:4.0.0
           # Spark Connect server binary reads spark-defaults.conf we mount
           # This creates a JVM driver process using `org.apache.spark.sql.connect.service.SparkConnectServer` and
           # initializes a SparkSession, registers with the cluster manager.
           command: ["/opt/spark/sbin/start-connect-server.sh"]
+          # command: ["/bin/sh", "-c", "sleep 10000"]
           resources: # The node resources can be found through `kubectl describe node prod-test-worker`
             requests:
               memory: "1500Mi" # or 2Gi
@@ -62,16 +74,12 @@ spec:
             periodSeconds: 10
           env:
             - name: RUN_ID
-              value: "1730936402"
+              value: "1730936408"
             - name: SPARK_NO_DAEMONIZE # Tells Spark startup scripts (like start-connect-server.sh, start-thriftserver.sh, etc.)
                                        # to run in the foreground instead of daemonizing.
                                        # Kubernetes expects the main container process (PID 1) to stay in the foreground.
                                        # If the script daemonizes, the pod will exit immediately after startup.
               value: "true"
-            - name: SPARK_DRIVER_EXTRA_CLASSPATH    # This helps classic Spark. With Spark Connect, execution happens under a classloader that
-                                                    # only sees registered artifacts (per session) unless you explicitly preconfigure server-side
-                                                    # artifact loading. So, you still need to addArtifact.
-              value: /opt/spark/custom-jars/*       # To add custom jars that aren’t in `/opt/spark/jars`
             - name: SPARK_CONF_DIR
               value: /opt/spark/conf
           volumeMounts:
@@ -79,8 +87,9 @@ spec:
               mountPath: /tmp/spark-events
             - name: spark-default-conf
               mountPath: /opt/spark/conf
-            - name: custom-jars
-              mountPath: /opt/spark/custom-jars
+            - name: shared-jars  # Mount the shared volume to SPARK_HOME/jars
+              mountPath: /opt/spark/jars/custom # Mount to a subdirectory to avoid overwriting(hiding) the
+                                                # original `$SPARK_HOME/jars` directory in the image
       volumes:
         - name: spark-events
           persistentVolumeClaim:
@@ -91,6 +100,12 @@ spec:
         - name: custom-jars
           persistentVolumeClaim:
             claimName: custom-jars-pvc
+        - name: shared-jars  # emptyDir volume shared between init and main container
+          emptyDir: { } # An emptyDir volume is a temporary, ephemeral storage that is created when a pod is assigned
+                        # to a node and is deleted when the pod is removed from the node.
+                        # It's often used as a scratchpad to share data between containers in the same pod or
+                        # for temporary storage during the pod's lifecycle.
+                        # The data is lost when the pod terminates or is rescheduled.
 ---
 apiVersion: v1
 kind: Service

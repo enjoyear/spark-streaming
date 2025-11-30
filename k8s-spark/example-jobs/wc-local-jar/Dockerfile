@@ -8,4 +8,4 @@
 FROM spark:4.0.0
 
 # root directory is determined by the `context path` through the `docker build` command
-COPY word-count/build/libs/word-count.jar /opt/spark-work-dir/word-count.jar
+COPY word-count/build/libs/word-count.jar /custom_jars_in_image/word-count.jar
