@@ -27,17 +27,13 @@ spec:
               mkdir -p /tmp/spark-events
               chown -R 185:185 /tmp/spark-events
               chmod 755 /tmp/spark-events
-              cp /tmp/custom-jars/* /shared-jars/
           volumeMounts:
             - name: spark-events
               mountPath: /tmp/spark-events
-            - name: custom-jars
-              mountPath: /tmp/custom-jars
-            - name: shared-jars  # shared volume
-              mountPath: /shared-jars
       containers:
         - name: driver
           image: docker.io/library/spark:4.0.0
+          # image: spark-wordcount:v2
           # Spark Connect server binary reads spark-defaults.conf we mount
           # This creates a JVM driver process using `org.apache.spark.sql.connect.service.SparkConnectServer` and
           # initializes a SparkSession, registers with the cluster manager.
@@ -74,7 +70,7 @@ spec:
             periodSeconds: 10
           env:
             - name: RUN_ID
-              value: "1730936408"
+              value: "1730936423"
             - name: SPARK_NO_DAEMONIZE # Tells Spark startup scripts (like start-connect-server.sh, start-thriftserver.sh, etc.)
                                        # to run in the foreground instead of daemonizing.
                                        # Kubernetes expects the main container process (PID 1) to stay in the foreground.
@@ -87,7 +83,7 @@ spec:
               mountPath: /tmp/spark-events
             - name: spark-default-conf
               mountPath: /opt/spark/conf
-            - name: shared-jars  # Mount the shared volume to SPARK_HOME/jars
+            - name: custom-jars
               mountPath: /opt/spark/jars/custom # Mount to a subdirectory to avoid overwriting(hiding) the
                                                 # original `$SPARK_HOME/jars` directory in the image
       volumes:
@@ -100,12 +96,6 @@ spec:
         - name: custom-jars
           persistentVolumeClaim:
             claimName: custom-jars-pvc
-        - name: shared-jars  # emptyDir volume shared between init and main container
-          emptyDir: { } # An emptyDir volume is a temporary, ephemeral storage that is created when a pod is assigned
-                        # to a node and is deleted when the pod is removed from the node.
-                        # It's often used as a scratchpad to share data between containers in the same pod or
-                        # for temporary storage during the pod's lifecycle.
-                        # The data is lost when the pod terminates or is rescheduled.
 ---
 apiVersion: v1
 kind: Service
