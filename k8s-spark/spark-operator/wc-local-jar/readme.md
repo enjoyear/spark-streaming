@@ -10,7 +10,7 @@ To mount the local JAR into the pods. There are a few options:
 ## Option A: Use a ConfigMap (for smaller JARs < 1MB)
 - ConfigMap is stored in etcd/cluster
 ```bash
-kubectl apply -f ./k8s-spark/example-jobs/wc-local-jar/word-count-configmap.yaml
+kubectl apply -f ./k8s-spark/spark-operator/wc-local-jar/word-count-configmap.yaml
 ```
 
 ### Overall Flow
@@ -54,13 +54,13 @@ Create a PV/PVC and copy your JAR there, then mount it similar to how you're mou
 ## Option C: Build a custom Docker image (most production-ready)
 Build jar into Docker image, and trigger job with the image
 ```bash
-kubectl apply -f ./k8s-spark/example-jobs/wc-local-jar/word-count-dockerimage.yaml
+kubectl apply -f ./k8s-spark/spark-operator/wc-local-jar/word-count-dockerimage.yaml
 ```
 
 ```bash
 # build the image with a tag
 # the last `.` indicates the context path, which controls what files are visible to the Dockerfile during build (e.g. what COPY/ADD can see)
-docker build -t spark-wordcount:v2 -f k8s-spark/example-jobs/wc-local-jar/Dockerfile .
+docker build -t spark-wordcount:v2 -f k8s-spark/spark-operator/wc-local-jar/Dockerfile .
 
 # Verify the image was created
 docker images | grep spark-wordcount

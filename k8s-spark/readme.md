@@ -100,7 +100,7 @@ kubectl get clusterrole <role-name> -o yaml  # can be accessed across different 
 # Submit a Spark job
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/heads/master/examples/spark-pi.yaml
-kubectl apply -f ./k8s-spark/example-jobs/spark-pi-example.yaml
+kubectl apply -f ./k8s-spark/spark-operator/spark-pi-example.yaml
 
 # Watch the pods being created
 kubectl get pods -w
