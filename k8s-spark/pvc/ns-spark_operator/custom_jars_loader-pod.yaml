@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Pod # a one-time, ad-hoc naked pod launched manually and NOT managed by a controller.
           # Most specs of the `POD` kind is immutable once the pod is created. Delete & recreate for updates.
 metadata:
-  name: custom-jars-pod
+  name: custom-artifacts-pod
   namespace: spark-operator
 spec:
   restartPolicy: Never
@@ -10,13 +10,13 @@ spec:
     - name: sh
       image: busybox:1.36
       command: ["sh","-c","sleep 3600"]  # gives you 1 hour to upload the jars
-                                         # kubectl cp -n spark-operator word-count/build/libs/word-count.jar custom-jars-pod:/custom-jars/word-count.jar
-                                         # docker exec -it prod-test-worker2 ls -al /tmp/custom-jars2
+                                         # kubectl cp -n spark-operator word-count/build/libs/word-count.jar custom-artifacts-pod:/custom-artifacts/word-count.jar
+                                         # docker exec -it prod-test-worker2 ls -al /tmp/custom-jars
                                          # MAKE SURE to deploy this pod to the same worker as the driver
       volumeMounts:
-        - name: jars
-          mountPath: /custom-jars
+        - name: custom-artifacts
+          mountPath: /custom-artifacts
   volumes:
-    - name: jars
+    - name: custom-artifacts
       persistentVolumeClaim:
         claimName: custom-jars-pvc
