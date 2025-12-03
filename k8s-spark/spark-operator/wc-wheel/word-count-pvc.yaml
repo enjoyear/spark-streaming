@@ -8,8 +8,12 @@ spec:
   mode: cluster
   image: docker.io/library/spark:4.0.0
   imagePullPolicy: IfNotPresent
-  mainApplicationFile: local:///tmp/custom-wheels/word_count.py
+  mainApplicationFile: local:///tmp/custom-wheels/driver.py
   arguments:
+  - "module1"
+  - "main"
+  - "--"
+  - "--input-file-path"
   - "file:///etc/passwd"
   sparkVersion: 4.0.0
   sparkConf:
@@ -18,8 +22,8 @@ spec:
     spark.eventLog.dir: "file:///tmp/spark-events"
   pythonVersion: "3"
   deps:
-    pyFiles:
-      - local:///tmp/custom-wheels/your_wheel_file-0.1.0-py3-none-any.whl
+    pyFiles: # distribute them to executors
+      - local:///tmp/custom-wheels/wordcount_sc-0.1.0-py3-none-any.whl
   driver:
     nodeSelector:
       kubernetes.io/hostname: prod-test-worker2 # Deploy to the same node as the SHS
