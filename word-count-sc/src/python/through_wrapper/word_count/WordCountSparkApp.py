@@ -1,5 +1,4 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.connect.functions import startswith
 from pyspark.sql.functions import col, explode, split, length, count, lit, desc
 import argparse
 import sys
@@ -43,7 +42,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def validate_args(args: argparse.Namespace) -> None:
     file_path = getattr(args, "input_file_path", None)
-    if file_path is None or not startswith(file_path, "abc"):
+    if file_path is None or not file_path.startswith("file://"):
         raise ValueError(f"{file_path} must starts with ...")
 
 
@@ -73,7 +72,7 @@ def main(unittest_argv: Optional[List[str]] = None) -> None:
     args = parse_args(argv)
     validate_args(args)
 
-    spark = SparkSession.builder.remote("sc://localhost:15002").getOrCreate()
+    spark = SparkSession.builder.appName("WordCount-wheel").getOrCreate()
     try:
         _main(spark, args)
     finally:

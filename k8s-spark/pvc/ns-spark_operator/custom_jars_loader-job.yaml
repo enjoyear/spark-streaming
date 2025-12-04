@@ -7,6 +7,7 @@ metadata:
                                   # kubectl create -f ...
 spec:
   backoffLimit: 0  # A backoffLimit of 0 means "run exactly once, don't retry," while higher numbers allow more attempts.
+  ttlSecondsAfterFinished: 300 # Deletes the Job and its Pods 300 seconds after completion or failure.
   template:
     spec:
       restartPolicy: Never  # The Pod's restartPolicy must be OnFailure or Never for the backoffLimit to be effective.
