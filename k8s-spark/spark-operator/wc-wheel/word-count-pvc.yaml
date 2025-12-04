@@ -24,6 +24,7 @@ spec:
   pythonVersion: "3"
   deps:
     pyFiles: # distribute them to executors
+      - local:///tmp/custom-wheels/my_lib-0.1.0-py3-none-any.whl
       - local:///tmp/custom-wheels/wordcount_sc-0.1.0-py3-none-any.whl
   driver:
     nodeSelector:
@@ -32,7 +33,7 @@ spec:
       version: 4.0.0
     env:
       - name: RUN_ID
-        value: "1731936403"
+        value: "1731936404"
     cores: 1
     memory: 512m
     serviceAccount: spark-operator-spark

@@ -1,3 +1,3 @@
 ```bash
-make build-all
+make build-upload-all
 ```

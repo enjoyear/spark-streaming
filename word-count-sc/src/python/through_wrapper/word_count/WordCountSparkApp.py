@@ -26,7 +26,7 @@ def _main(spark: SparkSession, args: argparse.Namespace):
         words.groupBy("word")
         .agg(count(lit(1)).alias("count"))
         .orderBy(desc("count"))
-        .limit(10)
+        .limit(20)
     )
 
     collect_print_dataframe(result)
