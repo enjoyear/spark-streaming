@@ -4,6 +4,7 @@ metadata:
   name: word-count-wheel-pvc
   namespace: default
 spec:
+  timeToLiveSeconds: 3600 # Deletes the application 3600 seconds after completion
   type: Python
   mode: cluster
   image: docker.io/library/spark:4.0.0

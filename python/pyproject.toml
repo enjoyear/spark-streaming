@@ -3,14 +3,11 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "wordcount-sc"
+name = "my-lib"
 version = "0.1.0"
-description = "WordCount Spark Connect examples"
+description = "A library for dependency testing"
 authors = [{ name = "Chen" }]
 requires-python = ">=3.10"
-dependencies = [
-    "my-lib @ file:///../python",
-]
 
 [tool.setuptools.packages.find]
 where = ["src/python"]

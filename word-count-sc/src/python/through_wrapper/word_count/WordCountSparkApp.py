@@ -4,6 +4,7 @@ import argparse
 import sys
 from typing import List, Optional
 import logging
+from lib.dataframe_utils import collect_print_dataframe
 
 
 def _main(spark: SparkSession, args: argparse.Namespace):
@@ -28,8 +29,7 @@ def _main(spark: SparkSession, args: argparse.Namespace):
         .limit(10)
     )
 
-    for row in result.collect():
-        print(row)
+    collect_print_dataframe(result)
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
