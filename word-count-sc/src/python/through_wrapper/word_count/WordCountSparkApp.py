@@ -42,8 +42,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def validate_args(args: argparse.Namespace) -> None:
     file_path = getattr(args, "input_file_path", None)
-    if file_path is None or not file_path.startswith("file://"):
-        raise ValueError(f"{file_path} must starts with ...")
+    required_prefix = "file://"
+    if file_path is None or not file_path.startswith(required_prefix):
+        raise ValueError(f"{file_path} must starts with '{required_prefix}'")
 
 
 def main(unittest_argv: Optional[List[str]] = None) -> None:
