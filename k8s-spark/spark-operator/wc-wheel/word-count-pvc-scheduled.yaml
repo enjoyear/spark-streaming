@@ -1,91 +1,103 @@
 apiVersion: sparkoperator.k8s.io/v1beta2
-kind: SparkApplication
+# k get ScheduledSparkApplication
+# You can associate the driver and executors through their `spark-app-selector` pod label.
+# Or through the logs. In the driver log, you can find
+# INFO BlockManagerMasterEndpoint: Registering block manager spark-e2faeb9aec0f10f3-driver-svc.default.svc:7079 ...
+# in the executor log, you can find
+# INFO TransportClientFactory: Successfully created connection to spark-e2faeb9aec0f10f3-driver-svc.default.svc/10.244.1.248:7078 after 33 ms
+kind: ScheduledSparkApplication
 metadata:
-  name: word-count-wheel-pvc
+  name: word-count-wheel-pvc-scheduled
   namespace: default
 spec:
-  restartPolicy:   # this is for application level retry. For tasks level retries, configure Spark configurations
-    type: OnFailure
-    onFailureRetries: 3                     # retries when the driver fails after submission succeeds
-    onFailureRetryInterval: 10              # seconds between retries
-    onSubmissionFailureRetries: 3           # retries when spark-submit itself fails (e.g., image pull errors, scheduling issues)
-    onSubmissionFailureRetryInterval: 10
-  timeToLiveSeconds: 3600 # Deletes the application 3600 seconds after completion
-  type: Python
-  mode: cluster
-  image: docker.io/library/spark:4.0.0
-  imagePullPolicy: IfNotPresent
-  mainApplicationFile: local:///tmp/custom-wheels/driver.py
-  arguments:
-  - "through_wrapper.word_count.WordCountSparkApp"
-  - "main"
-  - "--"
-  - "--input-file-path"
-  - "file:///etc/passwd"
-  sparkVersion: 4.0.0
-  sparkConf:
-    spark.kubernetes.executor.deleteOnTermination: "false"
-    spark.eventLog.enabled: "true"
-    spark.eventLog.dir: "file:///tmp/spark-events"
-  pythonVersion: "3"
-  deps:
-    pyFiles: # distribute them to executors
-      - local:///tmp/custom-wheels/my_lib-0.1.0-py3-none-any.whl
-      - local:///tmp/custom-wheels/wordcount_sc-0.1.0-py3-none-any.whl
-  driver:
-    nodeSelector:
-      kubernetes.io/hostname: prod-test-worker2 # Deploy to the same node as the SHS
-    labels:
-      version: 4.0.0
-    env:
-      - name: RUN_ID
-        value: "1731936404"
-    cores: 1
-    memory: 512m
-    serviceAccount: spark-operator-spark
-    securityContext: &security-context
-      capabilities:
-        drop:
-        - ALL
-      runAsGroup: 185
-      runAsUser: 185
-      runAsNonRoot: true
-      allowPrivilegeEscalation: false
-      seccompProfile:
-        type: RuntimeDefault
-    volumeMounts: &volume-mounts
-    - name: spark-events
-      mountPath: /tmp/spark-events
-    - name: custom-wheels
-      mountPath: /tmp/custom-wheels
-    initContainers: &init-containers
-    - name: create-event-log-dir
-      image: busybox:1.36
-      command:
-        - 'sh'
-        - '-c'
-        - |
-          mkdir -p /tmp/spark-events /tmp/custom-wheels
-          chown -R 185:185 /tmp/spark-events /tmp/custom-wheels
-          chmod 755 /tmp/spark-events /tmp/custom-wheels
-      volumeMounts:
+  schedule: "*/5 * * * *"       # Every 5 minutes
+  concurrencyPolicy: Forbid     # Don't start new if previous still running
+                                # Allow, Forbid, or Replace — controls overlap behavior
+  successfulRunHistoryLimit: 3  # How many completed SparkApplication objects to keep
+  failedRunHistoryLimit: 3      # How many failed SparkApplication objects to keep
+  template:
+    restartPolicy: # this is for application level retry. For tasks level retries, configure Spark configurations
+      type: OnFailure
+      onFailureRetries: 3                     # retries when the driver fails after submission succeeds
+      onFailureRetryInterval: 10              # seconds between retries
+      onSubmissionFailureRetries: 3           # retries when spark-submit itself fails (e.g., image pull errors, scheduling issues)
+      onSubmissionFailureRetryInterval: 10
+    timeToLiveSeconds: 3600 # Deletes the application 3600 seconds after completion
+    type: Python
+    mode: cluster
+    image: docker.io/library/spark:4.0.0
+    imagePullPolicy: IfNotPresent
+    mainApplicationFile: local:///tmp/custom-wheels/driver.py
+    arguments:
+      - "through_wrapper.word_count.WordCountSparkApp"
+      - "main"
+      - "--"
+      - "--input-file-path"
+      - "file:///etc/passwd"
+    sparkVersion: 4.0.0
+    sparkConf:
+      spark.kubernetes.executor.deleteOnTermination: "false"
+      spark.eventLog.enabled: "true"
+      spark.eventLog.dir: "file:///tmp/spark-events"
+    pythonVersion: "3"
+    deps:
+      pyFiles: # distribute them to executors
+        - local:///tmp/custom-wheels/my_lib-0.1.0-py3-none-any.whl
+        - local:///tmp/custom-wheels/wordcount_sc-0.1.0-py3-none-any.whl
+    driver:
+      nodeSelector:
+        kubernetes.io/hostname: prod-test-worker2 # Deploy to the same node as the SHS
+      labels:
+        version: 4.0.0
+      env:
+        - name: RUN_ID
+          value: "1731936405"
+      cores: 1
+      memory: 512m
+      serviceAccount: spark-operator-spark
+      securityContext: &security-context
+        capabilities:
+          drop:
+            - ALL
+        runAsGroup: 185
+        runAsUser: 185
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        seccompProfile:
+          type: RuntimeDefault
+      volumeMounts: &volume-mounts
+        - name: spark-events
+          mountPath: /tmp/spark-events
+        - name: custom-wheels
+          mountPath: /tmp/custom-wheels
+      initContainers: &init-containers
+        - name: create-event-log-dir
+          image: busybox:1.36
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              mkdir -p /tmp/spark-events /tmp/custom-wheels
+              chown -R 185:185 /tmp/spark-events /tmp/custom-wheels
+              chmod 755 /tmp/spark-events /tmp/custom-wheels
+          volumeMounts:
+            - name: spark-events
+              mountPath: /tmp/spark-events
+            - name: custom-wheels
+              mountPath: /tmp/custom-wheels
+    executor:
+      labels:
+        version: 4.0.0
+      instances: 1
+      cores: 1
+      memory: 512m
+      securityContext: *security-context
+      volumeMounts: *volume-mounts
+      initContainers: *init-containers
+    volumes:
       - name: spark-events
-        mountPath: /tmp/spark-events
+        persistentVolumeClaim:
+          claimName: spark-events-pvc
       - name: custom-wheels
-        mountPath: /tmp/custom-wheels
-  executor:
-    labels:
-      version: 4.0.0
-    instances: 1
-    cores: 1
-    memory: 512m
-    securityContext: *security-context
-    volumeMounts: *volume-mounts
-    initContainers: *init-containers
-  volumes:
-  - name: spark-events
-    persistentVolumeClaim:
-      claimName: spark-events-pvc
-  - name: custom-wheels
-    persistentVolumeClaim:
-      claimName: custom-jars-pvc2
+        persistentVolumeClaim:
+          claimName: custom-jars-pvc2
